@@ -1,0 +1,14 @@
+Native Khmer reference voices used for voice conversion.
+
+native_male_1..3, native_female_3:
+  Google FLEURS dataset (km_kh), https://huggingface.co/datasets/google/fleurs
+  License: Creative Commons Attribution 4.0 (CC BY 4.0)
+
+native_female_1, native_female_2, native_girl_1, native_girl_2:
+  "Crowdsourced high-quality Khmer multi-speaker speech data set" by Google,
+  OpenSLR SLR42, https://www.openslr.org/42/
+  License: Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)
+
+If you publish videos made with these voices, credit the source above
+(e.g. in the video description). Voices you add yourself must be voices
+you have permission to use.

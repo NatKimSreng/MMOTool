@@ -1,0 +1,6 @@
+body {
+    background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
+}
+.glass {
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+}

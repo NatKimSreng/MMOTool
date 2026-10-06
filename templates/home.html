@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAI Dubber — Dub a Video</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0e13; --panel:#16161d; --panel2:#1d1d26; --line:#2a2a36; --line2:#383847;
+  --text:#ececf1; --muted:#9a9aab; --faint:#6b6b7b;
+  --accent:#f5a524; --accent-ink:#1a1206; --accent-soft:rgba(245,165,36,.12);
+  --ok:#22c55e; --ok-soft:rgba(34,197,94,.12); --bad:#f05252; --bad-soft:rgba(240,82,82,.12);
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,'Kantumruy Pro',system-ui,sans-serif}
+.km{font-family:'Kantumruy Pro',Inter,sans-serif}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+
+/* top bar */
+header{position:sticky;top:0;z-index:20;background:rgba(14,14,19,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{max-width:1120px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;text-decoration:none}
+.brand .logo{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:13px;font-weight:800}
+nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+nav a{padding:7px 12px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:14px;font-weight:500}
+nav a:hover{color:var(--text);background:var(--panel2)}
+nav a.on{color:var(--text);background:var(--panel2)}
+
+main{max-width:1120px;margin:0 auto;padding:24px 16px 80px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+
+.banner{grid-column:1/-1;display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--accent-soft);border:1px solid rgba(245,165,36,.35);font-size:14px}
+.banner a{color:var(--accent);font-weight:600}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.step{display:flex;gap:14px}
+.step+.step{margin-top:26px;padding-top:26px;border-top:1px solid var(--line)}
+.num{flex:0 0 28px;height:28px;border-radius:50%;background:var(--panel2);border:1px solid var(--line2);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--muted)}
+.step.done .num{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.step-body{flex:1;min-width:0}
+h2{margin:2px 0 4px;font-size:17px;font-weight:600}
+.sub{margin:0 0 14px;color:var(--muted);font-size:13.5px}
+
+/* source */
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;margin-bottom:12px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;font-weight:500}
+.seg button.on{background:var(--line2);color:var(--text)}
+.drop{display:block;border:1.5px dashed var(--line2);border-radius:12px;padding:30px 16px;text-align:center;cursor:pointer;transition:.15s}
+.drop:hover,.drop.drag{border-color:var(--accent);background:var(--accent-soft)}
+.drop .big{font-size:16px;font-weight:600;margin-top:6px}
+.drop .small{color:var(--muted);font-size:13px;margin-top:4px}
+.files{display:flex;flex-direction:column;gap:6px}
+.file{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}
+.file .n{color:var(--faint);font-size:12px;width:20px;text-align:right}
+.file .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file .sz{color:var(--muted);font-size:12.5px}
+.icon-btn{border:0;background:transparent;color:var(--muted);width:28px;height:28px;border-radius:7px;display:grid;place-items:center}
+.icon-btn:hover{background:var(--line);color:var(--text)}
+.icon-btn:disabled{opacity:.3;cursor:default;background:transparent}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none}
+.input:focus{border-color:var(--accent)}
+label.f{display:block;font-size:12.5px;color:var(--muted);margin:12px 0 6px;font-weight:500}
+.linkbtn{border:0;background:none;color:var(--accent);font-size:13.5px;font-weight:600;padding:4px 0}
+
+/* presets */
+.presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.presets{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.preset{text-align:left;border:1.5px solid var(--line);background:var(--panel2);border-radius:12px;padding:12px}
+.preset:hover{border-color:var(--line2)}
+.preset.on{border-color:var(--accent);background:var(--accent-soft)}
+.preset .ic{font-size:20px}
+.preset .t{font-weight:600;margin-top:6px;font-size:14.5px}
+.preset .k{color:var(--muted);font-size:12.5px}
+.preset .d{color:var(--faint);font-size:12px;margin-top:6px;line-height:1.4}
+
+/* voice */
+.voices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.voice{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:var(--panel2);border-radius:12px;padding:10px 12px;text-align:left}
+.voice.on{border-color:var(--accent);background:var(--accent-soft)}
+.voice{min-width:0}
+.voice .vt{flex:1;min-width:0}
+.voice .vt span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice .vt b{display:block;font-weight:600;font-size:14.5px}
+.voice .vt span{color:var(--muted);font-size:12.5px}
+.play{flex:0 0 32px;height:32px;border-radius:50%;border:1px solid var(--line2);background:var(--panel);display:grid;place-items:center;font-size:12px}
+.play:hover{border-color:var(--accent);color:var(--accent)}
+.toggles{display:grid;gap:8px;margin-top:14px}
+.tog{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);cursor:pointer}
+.tog .tt{flex:1}
+.tog .tt b{display:block;font-weight:500;font-size:14px}
+.tog .tt span{color:var(--muted);font-size:12.5px}
+.sw{position:relative;width:40px;height:22px;flex:0 0 40px}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw i{position:absolute;inset:0;background:var(--line2);border-radius:20px;transition:.15s}
+.sw i::after{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+.sw input:checked+i{background:var(--accent)}
+.sw input:checked+i::after{transform:translateX(18px)}
+.logo-thumb{width:34px;height:34px;border-radius:7px;object-fit:contain;background:#000;border:1px solid var(--line)}
+
+details.more{margin-top:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+details.more summary{cursor:pointer;padding:12px 14px;font-weight:500;font-size:14px;list-style:none;display:flex;align-items:center;gap:8px}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::before{content:"▸";color:var(--muted);transition:.15s}
+details.more[open] summary::before{transform:rotate(90deg)}
+.more-body{padding:0 14px 14px;display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+@media (max-width:640px){.more-body{grid-template-columns:1fr}}
+.more-body .full{grid-column:1/-1}
+select.input{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+.swatches{display:flex;gap:8px}
+.swatch{width:30px;height:30px;border-radius:8px;border:2px solid var(--line2)}
+.swatch.on{border-color:var(--text);box-shadow:0 0 0 2px var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.check{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px;color:var(--text)}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+
+.actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.btn{border:1px solid var(--line2);background:var(--panel2);border-radius:11px;padding:11px 16px;font-weight:600;font-size:14.5px;display:inline-flex;align-items:center;gap:8px;justify-content:center;text-decoration:none}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);flex:1;font-size:15.5px;padding:13px 18px}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.sm{padding:7px 11px;font-size:13px;border-radius:9px}
+.hint{color:var(--faint);font-size:12.5px;margin-top:8px}
+.err{color:var(--bad);font-size:13.5px;margin-top:10px}
+
+/* progress */
+.stages{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:18px 0 16px}
+.stage{text-align:center;font-size:12px;color:var(--faint)}
+.stage .dot{width:30px;height:30px;margin:0 auto 6px;border-radius:50%;border:1.5px solid var(--line2);display:grid;place-items:center;font-size:13px;background:var(--panel2)}
+.stage.done{color:var(--muted)}
+.stage.done .dot{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.stage.now{color:var(--text);font-weight:600}
+.stage.now .dot{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.track{height:10px;border-radius:10px;background:var(--panel2);overflow:hidden;border:1px solid var(--line)}
+.fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#ffcf6b);transition:width .5s}
+.pmeta{display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-size:13.5px;color:var(--muted);flex-wrap:wrap}
+.status-line{margin-top:14px;padding:10px 12px;background:var(--panel2);border-radius:10px;font-size:13.5px;border:1px solid var(--line);word-break:break-word}
+
+/* review */
+.review-list{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:12px;margin-top:12px}
+.rv{display:grid;grid-template-columns:70px 1fr;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.rv:last-child{border-bottom:0}
+.rv .tm{color:var(--faint);font-size:12px;padding-top:4px}
+.rv .src{color:var(--muted);font-size:12.5px;margin-bottom:4px}
+.rv textarea{width:100%;min-height:38px;resize:vertical;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:'Kantumruy Pro',sans-serif}
+
+/* result */
+.result-head{display:flex;align-items:center;gap:10px}
+.okdot{width:30px;height:30px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;font-weight:700}
+video{width:100%;border-radius:12px;background:#000;margin-top:16px;max-height:60vh}
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:14px}
+
+/* side */
+aside{display:flex;flex-direction:column;gap:16px}
+aside h3{margin:0 0 10px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{border:1px solid var(--line);border-radius:11px;padding:10px 11px;background:var(--panel2)}
+.item .nm{font-weight:500;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .meta{color:var(--faint);font-size:12px;margin-top:2px}
+.item .row{margin-top:8px;gap:6px}
+.pill{font-size:11.5px;padding:2px 8px;border-radius:20px;background:var(--line);color:var(--muted);font-weight:500}
+.pill.run{background:var(--accent-soft);color:var(--accent)}
+.pill.done{background:var(--ok-soft);color:var(--ok)}
+.pill.fail{background:var(--bad-soft);color:var(--bad)}
+.empty{color:var(--faint);font-size:13px;padding:6px 0}
+
+.vhead{display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:13.5px;flex-wrap:wrap}
+.vgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:640px){.vgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.vgrid .voice{padding:9px 10px}
+.vgrid .voice .vt b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vgrid .voice:disabled{opacity:.45;cursor:not-allowed}
+.form-row{margin-top:12px}
+main>section,aside{min-width:0}
+@media (max-width:640px){
+  .bar{gap:10px}
+  .brand span:last-child{display:none}
+  nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  nav a{white-space:nowrap;padding:7px 10px}
+  .card{padding:16px}
+  .step{gap:10px}
+  .stage{font-size:10.5px}
+  .stage .dot{width:26px;height:26px}
+  .stages{gap:2px}
+}
+@media (max-width:420px){ .stage:not(.now){font-size:0} .stage:not(.now) .dot{font-size:12px} }
+
+/* step 4: look editor */
+.look{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start}
+@media (max-width:760px){.look{grid-template-columns:1fr}}
+.look-screen{min-width:0;display:flex;flex-direction:column;gap:8px}
+.look-screen .seg{margin:0;align-self:center}
+.lp-wrap{display:flex;justify-content:center;background:#08080b;border:1px solid var(--line);border-radius:12px;padding:10px}
+.scr{position:relative;overflow:hidden;background:#000;border-radius:6px;width:100%;max-width:100%;touch-action:none;user-select:none}
+.scr.tall{width:auto;height:min(440px,68vh)}
+.scr video{position:absolute;margin:0;border-radius:0;max-height:none;pointer-events:none}
+.scr .bgv{inset:-6%;width:112%;height:112%;object-fit:cover;filter:blur(14px) brightness(.85)}
+.scr .fgv{left:0;right:0;top:50%;transform:translateY(-50%);width:100%;height:auto}
+.scr.orig .fgv{top:0;transform:none;height:100%;object-fit:fill}
+.scr .ph{position:absolute;inset:0;background:radial-gradient(120% 90% at 30% 20%,#3a3350,#14121c 60%,#0b0a10);display:grid;place-items:center;color:var(--faint);font-size:12.5px;text-align:center;padding:0 20px}
+.scr .subs{position:absolute;left:0;right:0;text-align:center;font-family:'Kantumruy Pro',sans-serif;font-weight:600;pointer-events:none;z-index:2;
+  text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 3px rgba(0,0,0,.8);line-height:1.25}
+.scr .subs span{padding:0 .3em;pointer-events:auto;cursor:ns-resize;touch-action:none;outline:1.5px dashed transparent;outline-offset:3px}
+.scr .subs.box span{background:rgba(0,0,0,.5);text-shadow:none}
+.vidbox{position:absolute;pointer-events:none}
+.hb{position:absolute;pointer-events:auto;cursor:move;touch-action:none;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);background:rgba(255,255,255,.04);z-index:1}
+.lg{position:absolute;z-index:3;cursor:grab;touch-action:none}
+.lg img{display:block;width:100%;height:auto;pointer-events:none}
+.lg .rz,.hb .rz{position:absolute;right:-9px;bottom:-9px;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid #000;cursor:nwse-resize;display:none}
+/* only the item of the open tab is outlined and resizable */
+.scr[data-tab=subs] .subs span{outline-color:rgba(255,255,255,.8)}
+.scr[data-tab=logo] .lg{outline:1.5px dashed var(--accent);outline-offset:2px}
+.scr[data-tab=hide] .hb{outline:1.5px dashed #7dd3fc}
+.scr[data-tab=logo] .lg .rz,.scr[data-tab=hide] .hb .rz{display:block}
+.lg.drag{cursor:grabbing}
+.scr .guide{position:absolute;background:var(--accent);opacity:0;pointer-events:none;transition:opacity .1s}
+.scr .guide.v{top:0;bottom:0;width:1px;left:50%}
+.scr .guide.h{left:0;right:0;height:1px;top:50%}
+.scr .guide.on{opacity:.9}
+.scr.dropping{box-shadow:inset 0 0 0 3px var(--accent)}
+.scene{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
+.scene input{flex:1}
+.scene #frameLbl{font-variant-numeric:tabular-nums;min-width:34px;text-align:right}
+.drag-hint{text-align:center;font-size:12.5px;color:var(--faint);min-height:18px}
+.look-panel{border:1px solid var(--line);border-radius:12px;background:var(--panel2);overflow:hidden}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
+.tabs button{position:relative;border:0;background:transparent;padding:10px 4px 9px;font-size:12.5px;font-weight:500;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;border-bottom:2px solid transparent}
+.tabs button:hover{color:var(--text)}
+.tabs button.on{color:var(--text);border-bottom-color:var(--accent);background:var(--panel)}
+.tabs .ti{font-size:15px;font-weight:700;line-height:1.2}
+.tabs .st{position:absolute;top:7px;right:calc(50% - 22px);width:7px;height:7px;border-radius:50%;background:var(--line2)}
+.tabs .st.on{background:var(--ok)}
+.pane{padding:12px}
+.pane .tog{background:var(--panel);margin:0}
+.pane label.f{display:flex;justify-content:space-between;margin:12px 0 4px}
+.pane .val{color:var(--text);font-variant-numeric:tabular-nums}
+#subCtrls.off{opacity:.35;pointer-events:none}
+.spots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.spots button{border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:6px 0;font-size:15px;color:var(--muted)}
+.spots button:hover{color:var(--text);border-color:var(--accent)}
+.warnline{margin-top:10px;font-size:12.5px;color:var(--bad);background:var(--bad-soft);border-radius:8px;padding:6px 9px}
+.lp-tips{margin-top:10px;font-size:12.5px;color:var(--muted)}
+.lp-tips summary{cursor:pointer;color:var(--muted)}
+.lp-tips ul{margin:6px 0 0;padding-left:18px}
+.lp-tips li{margin:3px 0}
+.howto{margin:12px 0 0;padding-left:20px;font-size:13px;color:var(--muted)}
+.howto li{margin:4px 0}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:grid;place-items:center;padding:16px;z-index:50}
+.modal .box{width:min(900px,100%);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+</style>
+<script src="/static/js/tasks.js"></script>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" href="/"><span class="logo">DAI</span><span>Dubber</span></a>
+    <nav>
+      <a href="/" class="on">Dub a video</a>
+      <a href="/record">Record my voice</a>
+      <a href="/studio">Studio editor</a>
+      <a href="/pro">All tools</a>
+      <a href="/settings">Settings</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="keyBanner" class="banner hidden">
+    <span>⚠️</span>
+    <span id="keyBannerText"></span>
+    <a href="/settings" style="margin-left:auto">Open Settings →</a>
+  </div>
+
+  <section>
+    <!-- ── FORM ───────────────────────────── -->
+    <div id="formView" class="card">
+      <div class="step" id="step1">
+        <div class="num">1</div>
+        <div class="step-body">
+          <h2>Choose your video <span class="km sub" style="font-size:13px">· ជ្រើសរើសវីដេអូ</span></h2>
+          <div class="seg">
+            <button type="button" id="srcFileBtn" class="on" onclick="setSource('file')">From computer</button>
+            <button type="button" id="srcUrlBtn" onclick="setSource('url')">From a link</button>
+          </div>
+
+          <div id="srcFile">
+            <label class="drop" id="drop" for="fileInput">
+              <div style="font-size:26px">🎬</div>
+              <div class="big">Drop video here or click to choose</div>
+              <div class="small">MP4, MOV, MKV, WebM · choose several episodes to join them into one video</div>
+            </label>
+            <input type="file" id="fileInput" accept="video/*,audio/*,.mkv" multiple hidden>
+            <div id="fileList" class="files hidden"></div>
+            <div id="fileTools" class="row hidden" style="margin-top:8px">
+              <button type="button" class="linkbtn" onclick="document.getElementById('fileInput').click()">+ Add more clips</button>
+              <span style="flex:1"></span>
+              <button type="button" class="linkbtn" style="color:var(--muted)" onclick="clearFiles()">Remove all</button>
+            </div>
+          </div>
+
+          <div id="srcUrl" class="hidden">
+            <input id="urlInput" class="input" placeholder="Paste a YouTube, TikTok, Facebook or other video link">
+            <div class="hint">The video is downloaded first, then dubbed automatically.</div>
+          </div>
+
+          <label class="f" for="jobName">Project name (optional)</label>
+          <input id="jobName" class="input" placeholder="e.g. Chef Story Ep 01">
+        </div>
+      </div>
+
+      <div class="step" id="step2">
+        <div class="num">2</div>
+        <div class="step-body">
+          <h2>What kind of video? <span class="km sub" style="font-size:13px">· ប្រភេទវីដេអូ</span></h2>
+          <p class="sub">Picks good settings for you. You can still change anything below.</p>
+          <div class="presets" id="presets"></div>
+        </div>
+      </div>
+
+      <div class="step" id="step3">
+        <div class="num">3</div>
+        <div class="step-body">
+          <h2>Khmer voice <span class="km sub" style="font-size:13px">· សំឡេងខ្មែរ</span></h2>
+          <div class="vhead"><b>Native Khmer voices</b> <span class="pill run">most natural</span>
+            <button type="button" class="linkbtn" style="margin-left:auto" onclick="openAddVoice()">+ Add your own voice</button></div>
+          <div id="nativeNote" class="hint hidden" style="margin:0 0 8px"></div>
+          <div class="vgrid" id="nativeVoices"></div>
+          <div class="vhead" style="margin-top:14px"><b>Standard voices</b> <span class="hint" style="margin:0">faster, more robotic</span></div>
+          <div class="voices">
+            <button type="button" class="voice" data-voice="narrator_female" onclick="pickVoice('narrator_female')">
+              <span class="vt"><b>Female</b><span class="km">ស្រីមុំ · narrator</span></span>
+              <span class="play" title="Listen" onclick="event.stopPropagation();preview('narrator_female',this)">▶</span>
+            </button>
+            <button type="button" class="voice" data-voice="narrator_male" onclick="pickVoice('narrator_male')">
+              <span class="vt"><b>Male</b><span class="km">ពិសិដ្ឋ · narrator</span></span>
+              <span class="play" title="Listen" onclick="event.stopPropagation();preview('narrator_male',this)">▶</span>
+            </button>
+          </div>
+          <div id="otherVoiceRow" class="row" style="margin-top:8px">
+            <select id="voiceSelect" class="input" style="flex:1" onchange="pickVoice(this.value)">
+              <option value="">Other voices &amp; my cloned voices…</option>
+            </select>
+          </div>
+
+          <label class="f">Speaking speed</label>
+          <div class="seg" id="speedSeg" style="margin-bottom:0">
+            <button type="button" data-rate="-8%">Slow</button>
+            <button type="button" data-rate="+3%">Normal</button>
+            <button type="button" data-rate="+12%">Fast</button>
+          </div>
+
+          <div class="toggles">
+            <label class="tog">
+              <span class="tt"><b>Different voice per character</b><span>AI picks girl / boy / old man… voices for each line</span></span>
+              <span class="sw"><input type="checkbox" id="optCast"><i></i></span>
+            </label>
+            <label class="tog" id="twoTog" style="margin-left:22px">
+              <span class="tt"><b>Just 2 voices: one boy, one girl</b><span>Like popular Khmer drama pages — every man gets the boy voice, every woman the girl voice</span></span>
+              <span class="sw"><input type="checkbox" id="optTwo" checked><i></i></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" id="step4">
+        <div class="num">4</div>
+        <div class="step-body">
+          <h2>How it looks <span class="km sub" style="font-size:13px">· រូបរាងវីដេអូ</span></h2>
+          <p class="sub">Pick a tab, then drag things on the screen.</p>
+
+          <div class="look" id="logoEditor">
+            <div class="look-screen">
+              <div class="seg" id="shapeSeg" title="Video shape">
+                <button type="button" data-r="original">Original</button>
+                <button type="button" data-r="9:16">📱 9:16</button>
+                <button type="button" data-r="1:1">⬜ 1:1</button>
+              </div>
+              <select id="optRatio" hidden>
+                <option value="original">Keep original</option>
+                <option value="9:16">9:16</option>
+                <option value="1:1">1:1</option>
+              </select>
+              <div class="lp-wrap">
+                <div class="scr" id="stage" data-tab="subs">
+                  <div class="ph" id="stagePh">Choose a video in step 1 to see it here.</div>
+                  <video class="bgv hidden" id="stageBg" muted playsinline preload="auto"></video>
+                  <video class="fgv hidden" id="stageFg" muted playsinline preload="auto"></video>
+                  <div class="vidbox" id="vidBox">
+                    <div class="hb hidden" id="hb" tabindex="0" aria-label="Blur box — drag to move"><span class="rz" id="hbRz" title="Drag to resize"></span></div>
+                  </div>
+                  <div class="subs" id="stageSubs"><span tabindex="0" aria-label="Subtitle — drag up or down">សួស្តី តើអ្នកសុខសប្បាយទេ?</span></div>
+                  <div class="guide v" id="guideV"></div><div class="guide h" id="guideH"></div>
+                  <div class="lg hidden" id="lg" tabindex="0" role="slider" aria-label="Logo — drag or use arrow keys">
+                    <img id="lgImg" alt="Your logo"><span class="rz" id="lgRz" title="Drag to resize"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="scene">
+                <span title="Pick a scene to preview">🎞</span>
+                <input type="range" id="frameSlider" min="0" max="1000" value="100" aria-label="Preview scene">
+                <span id="frameLbl">0:00</span>
+              </div>
+              <div class="drag-hint" id="dragHint"></div>
+            </div>
+
+            <div class="look-panel">
+              <div class="tabs" role="tablist">
+                <button type="button" role="tab" data-tab="subs"><span class="ti">Aa</span>Subtitles<i class="st" id="stSubs"></i></button>
+                <button type="button" role="tab" data-tab="logo"><span class="ti">★</span>Logo<i class="st" id="stLogo"></i></button>
+                <button type="button" role="tab" data-tab="hide"><span class="ti">▦</span>Hide text<i class="st" id="stHide"></i></button>
+              </div>
+
+              <div class="pane" data-pane="subs">
+                <label class="tog">
+                  <span class="tt"><b>Khmer subtitles</b><span>Burned into the video</span></span>
+                  <span class="sw"><input type="checkbox" id="optSubs" checked><i></i></span>
+                </label>
+                <div id="subCtrls">
+                  <label class="f">Colour</label>
+                  <div class="swatches" id="swatches">
+                    <button type="button" class="swatch" data-c="white" style="background:#fff" title="White"></button>
+                    <button type="button" class="swatch" data-c="yellow" style="background:#ffeb3b" title="Yellow"></button>
+                    <button type="button" class="swatch" data-c="cyan" style="background:#00e5ff" title="Cyan"></button>
+                    <button type="button" class="swatch" data-c="green" style="background:#10b981" title="Green"></button>
+                  </div>
+                  <label class="f" for="optSubSize">Size <span class="val" id="subSizeLbl">22</span></label>
+                  <input type="range" id="optSubSize" min="12" max="56" value="22">
+                  <label class="f" for="subY">Height <span class="val" id="subYLbl">9%</span></label>
+                  <input type="range" id="subY" min="0" max="80" value="9">
+                  <label class="check"><input type="checkbox" id="optBox"> Dark box behind text</label>
+                  <label class="check"><input type="checkbox" id="optBilingual"> Add original language line</label>
+                </div>
+              </div>
+
+              <div class="pane hidden" data-pane="logo">
+                <label class="tog" id="logoTog">
+                  <img id="logoThumb" class="logo-thumb hidden" alt="">
+                  <span class="tt"><b>My channel logo</b><span id="logoHint">Shown on the video</span></span>
+                  <span class="sw"><input type="checkbox" id="optLogo"><i></i></span>
+                </label>
+                <input type="file" id="logoInput" accept=".png,.jpg,.jpeg,.webp" hidden>
+                <div class="hint" id="logoSecHint"></div>
+                <div id="logoCtrls">
+                  <label class="f">Quick position</label>
+                  <div class="spots">
+                    <button type="button" data-spot="tl" title="Top left">↖</button>
+                    <button type="button" data-spot="tr" title="Top right">↗</button>
+                    <button type="button" data-spot="bl" title="Bottom left">↙</button>
+                    <button type="button" data-spot="br" title="Bottom right">↘</button>
+                  </div>
+                  <label class="f" for="lgSize">Size <span class="val" id="lgSizeLbl">14%</span></label>
+                  <input type="range" id="lgSize" min="4" max="40" value="14">
+                  <label class="f" for="lgOp">Visible <span class="val" id="lgOpLbl">85%</span></label>
+                  <input type="range" id="lgOp" min="20" max="100" step="5" value="85">
+                  <div class="warnline hidden" id="stageWarn">⚠ The logo covers the subtitles — move it up.</div>
+                  <button type="button" class="btn sm" style="width:100%;margin-top:12px" onclick="$('logoInput').click()">📁 Change logo image</button>
+                  <details class="lp-tips">
+                    <summary>💡 Logo tips</summary>
+                    <ul>
+                      <li>Use a <b>PNG with a transparent background</b> (no box around it).</li>
+                      <li><b>Top right or top left</b> — subtitles and TikTok buttons use the bottom.</li>
+                      <li>Size <b>10–15%</b> (15–20% for 9:16), <b>80–90%</b> visible.</li>
+                    </ul>
+                  </details>
+                </div>
+              </div>
+
+              <div class="pane hidden" data-pane="hide">
+                <label class="tog">
+                  <span class="tt"><b>Blur old subtitles</b><span>For videos that already have Chinese / English text</span></span>
+                  <span class="sw"><input type="checkbox" id="hbOn"><i></i></span>
+                </label>
+                <ol class="howto">
+                  <li>Slide 🎞 to a scene with text</li>
+                  <li>Drag the blue box over the text</li>
+                  <li>Pull the orange dot to fit it</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <details class="more" id="more">
+            <summary>More options <span class="hint" style="margin:0">sound &amp; translation</span></summary>
+            <div class="more-body">
+              <div>
+                <label class="f" for="optBg">Original sound (music, effects, voices)</label>
+                <select id="optBg" class="input">
+                  <option value="duck">Lower it when Khmer voice speaks</option>
+                  <option value="isolate_bgm">Remove original voices, keep music</option>
+                  <option value="mix">Keep it at a fixed level</option>
+                  <option value="mute">Remove it — Khmer voice only</option>
+                </select>
+              </div>
+              <div>
+                <label class="f" for="optBgVol">Background volume: <span id="bgVolLbl">25%</span></label>
+                <input type="range" id="optBgVol" min="0" max="80" step="5" value="25">
+              </div>
+              <div>
+                <label class="f" for="optLang">Language spoken in the video</label>
+                <select id="optLang" class="input">
+                  <option value="auto">Detect automatically</option>
+                  <option value="zh">Chinese</option>
+                  <option value="en">English</option>
+                  <option value="th">Thai</option>
+                  <option value="vi">Vietnamese</option>
+                  <option value="ja">Japanese</option>
+                  <option value="ko">Korean</option>
+                </select>
+              </div>
+              <div>
+                <label class="f" for="optStyle">Translation style</label>
+                <select id="optStyle" class="input">
+                  <option value="recap">Storytelling / recap</option>
+                  <option value="dialogue">Natural conversation</option>
+                  <option value="general">Plain subtitles</option>
+                </select>
+              </div>
+              <div>
+                <label class="f" for="optEngine">Translator</label>
+                <select id="optEngine" class="input">
+                  <option value="gemini">Google Gemini (best Khmer)</option>
+                  <option value="auto">Automatic (Gemini → OpenAI → Groq)</option>
+                  <option value="openai">OpenAI GPT</option>
+                  <option value="groq">Groq Llama (fastest)</option>
+                  <option value="google">Google Translate (free, basic)</option>
+                </select>
+              </div>
+              <div class="full">
+                <label class="check"><input type="checkbox" id="optBlend" checked> Blend the voice into the scene (a little room sound — less "studio AI")</label>
+                <label class="check"><input type="checkbox" id="optReview"> Let me check the Khmer script before the voice is made</label>
+              </div>
+            </div>
+          </details>
+
+          <div class="actions">
+            <button type="button" class="btn primary" id="startBtn" onclick="start()">Start dubbing</button>
+            <button type="button" class="btn" id="queueBtn" onclick="addToQueue()" title="Run it after the current job — good for overnight batches">Add to queue</button>
+          </div>
+          <div id="formErr" class="err hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PROGRESS ───────────────────────── -->
+    <div id="progressView" class="card hidden">
+      <h2 id="pTitle">Dubbing your video…</h2>
+      <p class="sub">This runs in the background — you can start another video or close this page. Find it any time under <b>Tasks</b> (bottom right). Pause saves it so you can resume later.</p>
+      <div class="stages" id="stages"></div>
+      <div class="track"><div class="fill" id="pFill"></div></div>
+      <div class="pmeta"><span id="pPct">0%</span><span id="pTime"></span></div>
+      <div class="status-line" id="pStatus">Starting…</div>
+      <div class="actions">
+        <button type="button" class="btn primary" onclick="dubAnother()">＋ Dub another video</button>
+        <button type="button" class="btn" id="pauseBtn" onclick="pauseTask()" title="Stops now and saves what is done — resume later from Tasks">⏸ Pause &amp; save</button>
+      </div>
+
+      <div id="reviewBox" class="hidden" style="margin-top:18px">
+        <h2>Check the Khmer script</h2>
+        <p class="sub">Fix any line, then continue. The voice is made from this text.</p>
+        <div class="review-list" id="reviewList"></div>
+        <div class="actions">
+          <button type="button" class="btn primary" onclick="sendReview(true)">Looks good — make the voice</button>
+          <button type="button" class="btn" onclick="sendReview(false)">Skip checking</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RESULT ─────────────────────────── -->
+    <div id="resultView" class="card hidden">
+      <div class="result-head">
+        <div class="okdot">✓</div>
+        <div><h2 style="margin:0">Your Khmer video is ready</h2><div class="sub" id="rMeta" style="margin:0"></div></div>
+      </div>
+      <video id="rVideo" controls preload="metadata"></video>
+      <div class="dl" id="rButtons"></div>
+      <div class="actions">
+        <button type="button" class="btn primary" onclick="showForm()">Dub another video</button>
+      </div>
+    </div>
+
+    <!-- ── ERROR ─────────────────────────── -->
+    <div id="errorView" class="card hidden">
+      <h2 id="eTitle" style="color:var(--bad)">Something went wrong</h2>
+      <div class="status-line" id="eText"></div>
+      <p class="sub" id="eHint" style="margin-top:12px">Check your API keys in Settings, or try again. Your settings are kept.</p>
+      <div class="actions">
+        <button type="button" class="btn primary hidden" id="eResume" onclick="resumeTask()">▶ Resume</button>
+        <button type="button" class="btn" onclick="dubAnother()">Back</button>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card" id="queueCard">
+      <h3>Queue <span class="pill" id="queueCount">0</span></h3>
+      <div class="list" id="queueList"><div class="empty">Nothing waiting. Use “Add to queue” to line up several videos.</div></div>
+    </div>
+    <div class="card">
+      <h3>Recent videos <button class="icon-btn" title="Refresh" onclick="loadRecent()">↻</button></h3>
+      <div class="list" id="recentList"><div class="empty">Loading…</div></div>
+    </div>
+  </aside>
+</main>
+
+<div id="addVoiceModal" class="modal hidden" onclick="if(event.target===this)closeAddVoice()">
+  <div class="box" style="width:min(520px,100%)">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Add your own voice</h2><button class="icon-btn" onclick="closeAddVoice()">✕</button></div>
+    <p class="sub" style="margin-top:6px">Every Khmer line will sound like this person. Use 10–30 seconds where <b>only this person talks</b> — no music, no other voices.</p>
+    <label class="f" for="avName">Name</label>
+    <input id="avName" class="input" placeholder="e.g. My voice, Narrator Sok">
+    <label class="f">This voice is</label>
+    <div class="seg" id="avGender" style="margin:0"><button type="button" data-g="man" class="on">Male</button><button type="button" data-g="woman">Female</button></div>
+    <label class="f">Take the voice from</label>
+    <div class="seg" id="avSrc" style="margin:0"><button type="button" data-s="upload" class="on">A file</button><button type="button" data-s="url">A link</button></div>
+    <div id="avFileRow" class="form-row"><input type="file" id="avFile" accept="audio/*,video/*" class="input"></div>
+    <div id="avUrlRow" class="form-row hidden"><input id="avUrl" class="input" placeholder="YouTube / Facebook / audio link"></div>
+    <div class="row form-row">
+      <div style="flex:1"><label class="f" for="avStart" style="margin-top:0">Start at (seconds)</label><input id="avStart" class="input" type="number" min="0" value="0"></div>
+      <div style="flex:1"><label class="f" for="avDur" style="margin-top:0">Length (seconds)</label><input id="avDur" class="input" type="number" min="10" max="60" value="25"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="avConsent"> I have permission to use this person's voice</label>
+    <div id="avErr" class="err hidden"></div>
+    <div class="actions"><button type="button" class="btn primary" id="avSave" onclick="saveVoice()">Add voice</button></div>
+  </div>
+</div>
+
+<div id="playerModal" class="modal hidden" onclick="if(event.target===this)closePlayer()">
+  <div class="box">
+    <div class="row" style="justify-content:space-between"><b id="playerTitle"></b><button class="icon-btn" onclick="closePlayer()">✕</button></div>
+    <video id="playerVideo" controls></video>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+
+const PRESETS = {
+  recap:  {ic:'🎬', t:'Movie recap',   k:'សម្រាយរឿង',  d:'One narrator tells the story. Music stays under the voice.',
+           s:{style:'recap', cast:false, bg:'duck', bgVol:25, color:'yellow', size:'22', box:false, ratio:'original', rate:'+3%'}},
+  drama:  {ic:'💬', t:'Drama dialogue',k:'រឿងភាគ',     d:'A different voice for each character. Natural talk.',
+           s:{style:'dialogue', cast:true, bg:'duck', bgVol:25, color:'white', size:'22', box:true, ratio:'original', rate:'+3%'}},
+  shorts: {ic:'📱', t:'TikTok / Shorts',k:'វីដេអូខ្លី',  d:'Vertical 9:16, big subtitles, faster voice.',
+           s:{style:'recap', cast:false, bg:'duck', bgVol:20, color:'cyan', size:'26', box:true, ratio:'9:16', rate:'+12%'}},
+  clean:  {ic:'🎙️', t:'Voice only',    k:'សំឡេងសុទ្ធ', d:'Removes the original sound. Only the Khmer voice.',
+           s:{style:'dialogue', cast:false, bg:'mute', bgVol:0, color:'white', size:'22', box:false, ratio:'original', rate:'+3%'}},
+};
+
+const state = {
+  source: 'file', files: [], preset: 'recap', voice: 'narrator_female', rate: '+3%', color: 'yellow',
+  logoExists: false, polling: null, stageMax: 0, lastReviewId: ''
+};
+
+/* ── settings memory ─────────────────────── */
+function saveChoices(){
+  store.set('dub_choices', {
+    preset: state.preset, voice: state.voice, rate: state.rate, color: state.color,
+    cast: $('optCast').checked, two: $('optTwo').checked, subs: $('optSubs').checked, logo: $('optLogo').checked,
+    bg: $('optBg').value, bgVol: $('optBgVol').value, lang: $('optLang').value, style: $('optStyle').value,
+    engine: $('optEngine').value, ratio: $('optRatio').value, size: $('optSubSize').value,
+    box: $('optBox').checked, bilingual: $('optBilingual').checked, review: $('optReview').checked, blend: $('optBlend').checked,
+    logoPlace: LogoEd.p, subPlace: LogoEd.sub, hideBox: LogoEd.hb,
+  });
+}
+function restoreChoices(){
+  const c = store.get('dub_choices');
+  if (!c) { applyPreset('recap', false); return; }
+  state.preset = c.preset || 'recap'; renderPresets();
+  pickVoice(c.voice || 'narrator_female', false); setRate(['-8%','+3%','+12%'].includes(c.rate) ? c.rate : '+3%', false); setColor(c.color || 'yellow', false);
+  $('optCast').checked = !!c.cast; $('optTwo').checked = c.two !== false; $('optSubs').checked = c.subs !== false; $('optLogo').checked = !!c.logo;
+  $('optBg').value = c.bg || 'duck'; $('optBgVol').value = c.bgVol ?? 25; $('optLang').value = c.lang || 'auto';
+  $('optStyle').value = c.style || 'recap'; $('optEngine').value = c.engine || 'gemini'; $('optRatio').value = c.ratio || 'original';
+  $('optSubSize').value = c.size || '22'; $('optBox').checked = !!c.box; $('optBilingual').checked = !!c.bilingual;
+  $('optReview').checked = !!c.review; $('optBlend').checked = c.blend !== false;
+  if (c.logoPlace && typeof c.logoPlace.x === 'number') Object.assign(LogoEd.p, c.logoPlace);
+  if (c.subPlace && typeof c.subPlace.y === 'number') Object.assign(LogoEd.sub, c.subPlace);
+  if (c.hideBox && typeof c.hideBox.x === 'number') Object.assign(LogoEd.hb, c.hideBox);
+  syncBgVol(); syncCast();
+}
+
+/* ── step 1: source ───────────────────────── */
+function setSource(s){
+  state.source = s;
+  $('srcFileBtn').classList.toggle('on', s === 'file'); $('srcUrlBtn').classList.toggle('on', s === 'url');
+  $('srcFile').classList.toggle('hidden', s !== 'file'); $('srcUrl').classList.toggle('hidden', s !== 'url');
+  LogoEd.loadVideo();
+  $('queueBtn').disabled = s === 'url';
+  $('queueBtn').title = s === 'url' ? 'Queue works with files from your computer' : 'Run it after the current job — good for overnight batches';
+  updateSteps();
+}
+function fmtSize(b){ return b > 1073741824 ? (b/1073741824).toFixed(1)+' GB' : (b/1048576).toFixed(0)+' MB'; }
+function addFiles(list){
+  for (const f of list) if (!state.files.some(x => x.name === f.name && x.size === f.size)) state.files.push(f);
+  state.files.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+  if (!$('jobName').value && state.files[0]) $('jobName').placeholder = state.files[0].name.replace(/\.[^.]+$/, '');
+  renderFiles();
+}
+function renderFiles(){
+  const has = state.files.length > 0;
+  $('drop').classList.toggle('hidden', has); $('fileList').classList.toggle('hidden', !has); $('fileTools').classList.toggle('hidden', !has);
+  const multi = state.files.length > 1;
+  $('fileList').innerHTML = (multi ? `<div class="hint" style="margin:0 0 2px">These ${state.files.length} clips will be joined in this order into one video.</div>` : '') +
+    state.files.map((f,i) => `
+    <div class="file">
+      <span class="n">${multi ? i+1 : '🎞'}</span><span class="nm" title="${esc(f.name)}">${esc(f.name)}</span><span class="sz">${fmtSize(f.size)}</span>
+      ${multi ? `<button class="icon-btn" title="Move up" ${i===0?'disabled':''} onclick="moveFile(${i},-1)">↑</button>
+                 <button class="icon-btn" title="Move down" ${i===state.files.length-1?'disabled':''} onclick="moveFile(${i},1)">↓</button>` : ''}
+      <button class="icon-btn" title="Remove" onclick="removeFile(${i})">✕</button>
+    </div>`).join('');
+  updateSteps(); LogoEd.loadVideo();
+}
+function moveFile(i,d){ const f = state.files; [f[i], f[i+d]] = [f[i+d], f[i]]; renderFiles(); }
+function removeFile(i){ state.files.splice(i,1); renderFiles(); }
+function clearFiles(){ state.files = []; renderFiles(); }
+function hasSource(){ return state.source === 'file' ? state.files.length > 0 : /^https?:\/\//i.test($('urlInput').value.trim()); }
+function updateSteps(){
+  $('step1').classList.toggle('done', hasSource());
+  $('step2').classList.toggle('done', !!state.preset);
+  $('step3').classList.toggle('done', !!state.voice);
+  $('step4').classList.toggle('done', hasSource());
+}
+
+/* ── step 2: presets ──────────────────────── */
+function renderPresets(){
+  $('presets').innerHTML = Object.entries(PRESETS).map(([k,p]) => `
+    <button type="button" class="preset ${state.preset===k?'on':''}" onclick="applyPreset('${k}')">
+      <div class="ic">${p.ic}</div><div class="t">${p.t}</div><div class="k km">${p.k}</div><div class="d">${p.d}</div>
+    </button>`).join('');
+  updateSteps();
+}
+function applyPreset(k, save = true){
+  state.preset = k; const s = PRESETS[k].s;
+  $('optStyle').value = s.style; $('optCast').checked = s.cast; $('optBg').value = s.bg; $('optBgVol').value = s.bgVol;
+  $('optSubSize').value = s.size; $('optBox').checked = s.box; $('optRatio').value = s.ratio;
+  setColor(s.color, false); setRate(s.rate, false); syncBgVol(); syncCast(); renderPresets(); LogoEd.layout();
+  if (save) saveChoices();
+}
+
+/* ── step 3: voice & options ──────────────── */
+function pickVoice(v, save = true){
+  if (!v) return;
+  state.voice = v;
+  document.querySelectorAll('.voice').forEach(b => b.classList.toggle('on', b.dataset.voice === v));
+  const sel = $('voiceSelect');
+  sel.value = [...sel.options].some(o => o.value === v) ? v : '';
+  updateSteps(); if (save) saveChoices();
+}
+function setRate(r, save = true){
+  state.rate = r;
+  document.querySelectorAll('#speedSeg button').forEach(b => b.classList.toggle('on', b.dataset.rate === r));
+  if (save) saveChoices();
+}
+function setColor(c, save = true){
+  state.color = c;
+  document.querySelectorAll('.swatch').forEach(b => b.classList.toggle('on', b.dataset.c === c));
+  LogoEd.layout();
+  if (save) saveChoices();
+}
+function syncCast(){ $('twoTog').classList.toggle('hidden', !$('optCast').checked); }
+function syncBgVol(){
+  $('bgVolLbl').textContent = $('optBgVol').value + '%';
+  $('optBgVol').disabled = $('optBg').value === 'mute';
+}
+let previewAudio = null;
+async function preview(voice, el){
+  if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+  const old = el.textContent; el.textContent = '…';
+  try {
+    const r = await fetch('/preview-voice-sample', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({voice, rate: state.rate, text: 'សួស្តី! នេះជាសំឡេងសម្រាប់និយាយរឿងរបស់អ្នក។ តើអ្នកចូលចិត្តសំឡេងនេះទេ?'})});
+    const j = await r.json();
+    if (j.success) { previewAudio = new Audio(j.audio); previewAudio.play(); el.textContent = '■'; previewAudio.onended = () => el.textContent = '▶'; }
+    else { el.textContent = old; alert('Could not play sample: ' + (j.error || '')); }
+  } catch(e) { el.textContent = old; }
+}
+
+/* logo */
+async function loadConfig(){
+  try {
+    const c = await (await fetch('/config')).json();
+    state.logoExists = !!c.logo_exists;
+    if (state.logoExists) { $('logoThumb').src = '/logo-preview?t=' + Date.now(); $('logoThumb').classList.remove('hidden');
+      $('logoHint').textContent = 'Shown on the video — drag it where you want below'; }
+    else $('logoHint').textContent = 'Turn on to choose a logo image (PNG with transparent background works best)';
+    LogoEd.sync(true);
+    const missing = [];
+    if (!c.has_groq_key) missing.push('Groq (fast speech-to-text)');
+    if (!c.has_gemini_key && !c.has_openai_key) missing.push('Gemini (good Khmer translation)');
+    if (missing.length) { $('keyBannerText').textContent = 'Add free API keys for best results: ' + missing.join(', ') + '.'; $('keyBanner').classList.remove('hidden'); }
+  } catch(e) {}
+}
+$('optLogo').addEventListener('change', e => {
+  if (e.target.checked && !state.logoExists) { e.target.checked = false; $('logoInput').click(); }
+  saveChoices(); LogoEd.sync();
+});
+async function uploadLogo(f){
+  if (!f) return;
+  if (!/\.(png|jpe?g|webp)$/i.test(f.name)) { alert('Logo must be a PNG, JPG or WEBP image.'); return; }
+  const fd = new FormData(); fd.append('logo', f);
+  const j = await (await fetch('/api/upload-logo', {method:'POST', body: fd})).json().catch(() => ({success:false}));
+  if (j.success) { state.logoExists = true; $('logoThumb').src = '/logo-preview?t=' + Date.now(); $('logoThumb').classList.remove('hidden');
+    $('logoHint').textContent = 'Shown on the video — drag it where you want below'; $('optLogo').checked = true; saveChoices(); LogoEd.sync(true); }
+  else alert(j.error || 'Logo upload failed');
+}
+$('logoInput').addEventListener('change', e => { uploadLogo(e.target.files[0]); e.target.value = ''; });
+$('logoThumb').addEventListener('click', e => { e.preventDefault(); $('logoInput').click(); });
+
+async function loadVoices(){
+  try {
+    const j = await (await fetch('/api/voices')).json();
+    const sel = $('voiceSelect');
+    const skip = new Set(['narrator_female','narrator_male']);
+    const cloned = j.voices.filter(v => v.type === 'cloned'), builtin = j.voices.filter(v => v.type !== 'cloned' && !skip.has(v.key));
+    const grp = (label, arr) => arr.length ? `<optgroup label="${esc(label)}">${arr.map(v => `<option value="${esc(v.key)}">${esc(v.name)}</option>`).join('')}</optgroup>` : '';
+    sel.innerHTML = '<option value="">Other voices &amp; my cloned voices…</option>' + grp('My cloned voices', cloned) + grp('More Khmer voices', builtin);
+    sel.value = [...sel.options].some(o => o.value === state.voice) ? state.voice : '';
+  } catch(e) {}
+}
+
+/* native voices */
+async function loadNativeVoices(){
+  try {
+    const j = await (await fetch('/api/native-voices')).json();
+    const ready = j.engine_ready;
+    $('nativeNote').classList.toggle('hidden', ready);
+    $('nativeNote').textContent = ready ? '' : 'The native voice engine is not installed on this computer yet — standard voices are used.';
+    $('nativeVoices').innerHTML = (j.voices || []).map(v => `
+      <button type="button" class="voice ${state.voice===v.key?'on':''}" data-voice="${esc(v.key)}" ${ready?'':'disabled'} onclick="pickVoice('${esc(v.key)}')">
+        <span class="vt"><b class="km">${esc(v.name)}</b><span>${v.type==='mine'?'My voice':(v.gender==='male'?'Male':'Female')}</span></span>
+        ${v.preview ? `<span class="play" title="Listen" onclick="event.stopPropagation();playSample('${esc(v.preview)}',this)">▶</span>`
+                    : `<span class="play" title="Sample is being made…" style="opacity:.4">…</span>`}
+      </button>`).join('');
+    return j;
+  } catch(e) { return null; }
+}
+function playSample(url, el){
+  if (previewAudio) { previewAudio.pause(); document.querySelectorAll('.play').forEach(p => { if (p.textContent === '■') p.textContent = '▶'; }); }
+  previewAudio = new Audio(url + '?t=' + Date.now()); previewAudio.play(); el.textContent = '■';
+  previewAudio.onended = () => el.textContent = '▶';
+}
+
+/* add your own voice */
+function segPick(id, attr){ return document.querySelector(`#${id} button.on`).dataset[attr]; }
+['avGender','avSrc'].forEach(id => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll(`#${id} button`).forEach(x => x.classList.toggle('on', x === b));
+  if (id === 'avSrc') { $('avFileRow').classList.toggle('hidden', b.dataset.s !== 'upload'); $('avUrlRow').classList.toggle('hidden', b.dataset.s !== 'url'); }
+})));
+function openAddVoice(){ $('avErr').classList.add('hidden'); $('addVoiceModal').classList.remove('hidden'); }
+function closeAddVoice(){ $('addVoiceModal').classList.add('hidden'); }
+async function saveVoice(){
+  const err = m => { $('avErr').textContent = m; $('avErr').classList.remove('hidden'); };
+  const mode = segPick('avSrc','s');
+  if (!$('avConsent').checked) return err('Please confirm you have permission to use this voice.');
+  if (mode === 'upload' && !$('avFile').files[0]) return err('Choose a file with the voice.');
+  if (mode === 'url' && !/^https?:\/\//.test($('avUrl').value.trim())) return err('Paste a link.');
+  const fd = new FormData();
+  fd.append('mode', mode); fd.append('name', $('avName').value.trim() || 'My voice');
+  fd.append('role', segPick('avGender','g')); fd.append('startSec', $('avStart').value || '0');
+  fd.append('durationSec', $('avDur').value || '25'); fd.append('cloneToElevenlabs', 'false'); fd.append('setAsRoleDefault', 'false');
+  if (mode === 'upload') fd.append('audio_file', $('avFile').files[0]); else fd.append('url', $('avUrl').value.trim());
+  $('avSave').disabled = true; $('avSave').textContent = 'Adding…';
+  try {
+    const j = await (await fetch('/api/clone-voice', {method:'POST', body: fd})).json();
+    if (!j.success) return err(j.error || 'Could not add the voice.');
+    closeAddVoice(); await loadNativeVoices(); pickVoice(j.voice.id);
+    // its ▶ sample is rendered in the background — refresh until it's there
+    let tries = 0; const t = setInterval(async () => {
+      const r = await loadNativeVoices(); tries++;
+      if (tries > 30 || (r && r.voices.some(v => v.key === j.voice.id && v.preview))) clearInterval(t);
+    }, 5000);
+  } finally { $('avSave').disabled = false; $('avSave').textContent = 'Add voice'; }
+}
+
+/* ── build request ───────────────────────── */
+function options(){
+  const bg = $('optBg').value;
+  return {
+    sourceLang: $('optLang').value, doTts: 'true', voice: state.voice, rate: state.rate, pitch: 'default',
+    jobName: $('jobName').value.trim(), burnSubs: String($('optSubs').checked), dubbingMode: bg,
+    bgmVolume: String(bg === 'mute' ? 0 : $('optBgVol').value / 100), voiceVolume: '1.0',
+    translateEngine: $('optEngine').value, translateStyle: $('optStyle').value,
+    subColor: state.color, subSize: $('optSubSize').value, subBox: String($('optBox').checked), subPos: `y:${LogoEd.sub.y.toFixed(4)}`, hideBox: LogoEd.hideBoxParam(),
+    bilingualSubs: String($('optBilingual').checked), autoDetectVoice: String($('optCast').checked),
+    aspectRatio: $('optRatio').value, reviewScript: String($('optReview').checked),
+    castMode: $('optTwo').checked ? 'two' : 'full',
+    blendScene: String($('optBlend').checked),
+    logoEnabled: String($('optLogo').checked && state.logoExists),
+    logoPos: `xy:${LogoEd.p.x.toFixed(4)},${LogoEd.p.y.toFixed(4)}`, logoSize: `w:${LogoEd.p.w.toFixed(4)}`,
+    logoOpacity: String(LogoEd.p.op),
+  };
+}
+function formData(){
+  const fd = new FormData(), o = options();
+  for (const k in o) fd.append(k, o[k]);
+  state.files.forEach(f => fd.append('videos', f, f.name));
+  fd.append('order', JSON.stringify(state.files.map(f => f.name)));
+  return fd;
+}
+function formError(msg){ $('formErr').textContent = msg; $('formErr').classList.toggle('hidden', !msg); }
+
+function upload(url, fd, onProgress){
+  return new Promise((resolve) => {
+    const x = new XMLHttpRequest(); x.open('POST', url);
+    x.upload.onprogress = e => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch(e) { j = {success:false, error:'Server error ' + x.status}; } resolve(j); };
+    x.onerror = () => resolve({success:false, error:'Could not reach the app. Is it still running?'});
+    x.send(fd);
+  });
+}
+
+async function start(){
+  formError('');
+  if (!hasSource()) { formError(state.source === 'file' ? 'Choose a video first.' : 'Paste a video link first.'); return; }
+  saveChoices();
+  $('startBtn').disabled = true;
+  let j;
+  if (state.source === 'url') {
+    const o = options(); o.url = $('urlInput').value.trim();
+    for (const k of ['burnSubs','subBox','bilingualSubs','autoDetectVoice','reviewScript','logoEnabled','blendScene']) o[k] = o[k] === 'true';
+    j = await (await fetch('/pipeline-from-url', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(o)})).json().catch(() => ({success:false, error:'Server error'}));
+  } else {
+    $('startBtn').textContent = 'Uploading… 0%';
+    j = await upload('/pipeline', formData(), p => $('startBtn').textContent = `Uploading… ${Math.round(p*100)}%`);
+  }
+  $('startBtn').disabled = false; $('startBtn').textContent = 'Start dubbing';
+  if (!j.success) { formError(j.error || 'Could not start.'); return; }
+  if (j.task_id) DubTasks.track(j.task_id);
+  // the form keeps its choices but drops the files, ready for the next video
+  clearFiles(); $('jobName').value = ''; if (state.source === 'url') $('urlInput').value = '';
+  state.stageMax = 0; state.lastReviewId = ''; showProgress(); poll();
+}
+
+/* ── background tasks ───────────────────── */
+function dubAnother(){
+  // the current job keeps running in the background (see Tasks)
+  clearInterval(state.polling); DubTasks.track(''); showForm(); updateSteps(); window.scrollTo(0, 0);
+}
+async function pauseTask(){
+  const id = DubTasks.current(); if (!id) return;
+  $('pauseBtn').disabled = true; $('pauseBtn').textContent = 'Pausing…';
+  await DubTasks.stop(id);
+}
+async function resumeTask(){
+  const id = DubTasks.current(); if (!id) return;
+  $('eResume').disabled = true;
+  const r = await DubTasks.resume(id);
+  $('eResume').disabled = false;
+  if (!r.success) { $('eText').textContent = r.error || 'Could not resume.'; return; }
+  state.stageMax = 0; state.lastReviewId = ''; showProgress(); poll();
+}
+function showPaused(p){
+  const closed = p.state === 'interrupted', failed = p.state === 'error';
+  $('eTitle').textContent = failed ? 'Something went wrong' : closed ? 'Paused — the app was closed' : 'Paused';
+  $('eTitle').style.color = failed ? 'var(--bad)' : 'var(--text)';
+  $('eText').textContent = String(p.status || '').replace(/^Error:\s*/, '');
+  $('eHint').textContent = p.resumable
+    ? 'Everything finished so far is saved. Resume continues from there — no need to upload again.'
+    : 'Check your API keys in Settings, or try again. Your settings are kept.';
+  $('eResume').classList.toggle('hidden', !p.resumable);
+  $('eResume').textContent = failed ? '↻ Try again from where it stopped' : '▶ Resume';
+  showOnly('errorView');
+}
+// show a task picked in the Tasks panel (or opened with /?task=id)
+// this page only shows dub jobs — split / download / other tool jobs stay on their own page
+const isDubTask = p => !p.kind || p.kind === 'dub';
+function showTask(p){
+  if (!isDubTask(p)) { showForm(); return; }
+  if (p.is_processing) { state.stageMax = 0; showProgress(); renderProgress(p); poll(); return; }
+  if (['stopped', 'interrupted', 'error'].includes(p.state) || String(p.status || '').startsWith('Error')) { showPaused(p); return; }
+  if (p.final_video || p.state === 'done') { showResult(p); return; }
+  showForm();
+}
+window.onDubTaskOpen = id => {
+  DubTasks.track(id); state.lastReviewId = '';
+  fetch('/progress').then(r => r.json()).then(showTask).catch(() => {});
+  return true;
+};
+window.onDubTaskResumed = id => { if (id === DubTasks.current()) { state.stageMax = 0; showProgress(); poll(); } };
+
+async function addToQueue(){
+  formError('');
+  if (state.source !== 'file' || !state.files.length) { formError('Choose a video file first.'); return; }
+  saveChoices();
+  $('queueBtn').disabled = true; const old = $('queueBtn').textContent;
+  const j = await upload('/api/batch-queue/add', formData(), p => $('queueBtn').textContent = `Uploading ${Math.round(p*100)}%`);
+  $('queueBtn').disabled = false; $('queueBtn').textContent = old;
+  if (!j.success) { formError(j.error || 'Could not add to queue.'); return; }
+  clearFiles(); $('jobName').value = ''; loadQueue();
+}
+
+/* ── progress ───────────────────────────── */
+const STAGES = [
+  {at:0,  ic:'⚙', t:'Prepare'}, {at:20, ic:'👂', t:'Listen'}, {at:50, ic:'🌐', t:'Translate'},
+  {at:86, ic:'🎙', t:'Voice'},  {at:93, ic:'🎚', t:'Mix'},     {at:97, ic:'🎞', t:'Video'},
+];
+function showOnly(id){ ['formView','progressView','resultView','errorView'].forEach(v => $(v).classList.toggle('hidden', v !== id)); }
+function showForm(){ showOnly('formView'); }
+function showProgress(){ showOnly('progressView'); }
+function fmtDur(sec){ sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = sec%60;
+  return h ? `${h}h ${m}m` : m ? `${m}m ${String(s).padStart(2,'0')}s` : `${s}s`; }
+
+function renderProgress(p){
+  const pct = Math.max(0, Math.min(100, p.percent || 0));
+  $('pauseBtn').disabled = !!p.stop_requested; $('pauseBtn').textContent = p.stop_requested ? 'Pausing…' : '⏸ Pause & save';
+  $('pauseBtn').classList.toggle('hidden', p.resumable === false);
+  state.stageMax = Math.max(state.stageMax, pct);
+  const cur = STAGES.reduce((a, s, i) => state.stageMax >= s.at ? i : a, 0);
+  $('stages').innerHTML = STAGES.map((s,i) => `<div class="stage ${i<cur?'done':i===cur?'now':''}"><div class="dot">${i<cur?'✓':s.ic}</div>${s.t}</div>`).join('');
+  $('pFill').style.width = pct + '%'; $('pPct').textContent = pct + '%';
+  $('pStatus').textContent = p.status || '';
+  if (p.started_at) {
+    const el = Date.now()/1000 - p.started_at;
+    let t = 'Running for ' + fmtDur(el);
+    if (pct >= 12 && pct < 100) t += ` · about ${fmtDur(el * (100 - pct) / pct)} left (estimate)`;
+    $('pTime').textContent = t;
+  }
+  $('pTitle').textContent = p.waiting_for_review ? 'Waiting for you'
+    : p.state === 'queued' ? 'Waiting for a free slot…' : (p.name ? `Dubbing “${p.name}”…` : 'Dubbing your video…');
+  if (p.waiting_for_review && p.review_job_id !== state.lastReviewId) showReview(p);
+  if (!p.waiting_for_review) $('reviewBox').classList.add('hidden');
+}
+
+function showReview(p){
+  state.lastReviewId = p.review_job_id;
+  const segs = p.review_segments || [];
+  const t = s => { const m = Math.floor(s/60), x = Math.floor(s%60); return `${m}:${String(x).padStart(2,'0')}`; };
+  $('reviewList').innerHTML = segs.map(s => `
+    <div class="rv"><div class="tm">${t(s.start)}</div><div>
+      ${s.source ? `<div class="src">${esc(s.source)}</div>` : ''}
+      <textarea data-id="${s.id}" data-voice="${esc(s.voice || '')}" data-orig="${esc(s.text)}">${esc(s.text)}</textarea>
+    </div></div>`).join('');
+  $('reviewBox').classList.remove('hidden');
+}
+async function sendReview(withEdits){
+  const segments = withEdits ? [...document.querySelectorAll('#reviewList textarea')]
+    .filter(t => t.value !== t.dataset.orig).map(t => ({id: +t.dataset.id, text: t.value, voice: t.dataset.voice})) : [];
+  await fetch('/api/pipeline-review-confirm', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({job_id: state.lastReviewId, segments})});
+  $('reviewBox').classList.add('hidden');
+}
+
+function poll(){
+  clearInterval(state.polling);
+  let sawRunning = false;
+  state.polling = setInterval(async () => {
+    let p; try { p = await (await fetch('/progress')).json(); } catch(e) { return; }
+    if (p.is_processing) { sawRunning = true; renderProgress(p); return; }
+    clearInterval(state.polling); loadRecent(); loadQueue();
+    if (['stopped', 'interrupted', 'error'].includes(p.state) || String(p.status || '').startsWith('Error')) showPaused(p);
+    else if (sawRunning || p.final_video) showResult(p);
+    else showForm();
+  }, 1000);
+}
+
+function fileBtn(label, path, kind){
+  if (!path) return '';
+  if (kind === 'folder') return `<button class="btn sm" onclick='openFolder(${JSON.stringify(path)})'>${label}</button>`;
+  return `<a class="btn sm" href="/download-file?path=${encodeURIComponent(path)}">${label}</a>`;
+}
+function showResult(p){
+  showOnly('resultView');
+  const v = p.final_video || '';
+  $('rVideo').src = v ? '/stream-video?path=' + encodeURIComponent(v) : '';
+  $('rVideo').classList.toggle('hidden', !v);
+  $('rMeta').textContent = p.status && !p.status.startsWith('Done') ? p.status : (p.job_dir || '');
+  $('rButtons').innerHTML =
+    fileBtn('⬇ Download video', v) + fileBtn('📄 Khmer subtitles (.srt)', p.final_srt) +
+    fileBtn('🔊 Audio track', p.final_audio) + fileBtn('📁 Open folder', p.job_dir || p.result_path, 'folder') +
+    ((p.job_dir || p.result_path) ? `<a class="btn sm" href="/record?dir=${encodeURIComponent(p.job_dir || p.result_path)}">🎙 Re-voice with my voice</a>` : '') +
+    `<a class="btn sm" href="/studio">✂️ Fix lines in Studio</a>`;
+}
+async function openFolder(path){
+  await fetch('/open-folder', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({path})});
+}
+
+/* ── side lists ─────────────────────────── */
+async function loadRecent(){
+  try {
+    const j = await (await fetch('/api/recent')).json();
+    const items = (j.items || []).filter(it => it.folder_exists).slice(0, 12);
+    $('recentList').innerHTML = items.length ? items.map(it => `
+      <div class="item">
+        <div class="nm" title="${esc(it.name)}">${esc(it.name)}</div>
+        <div class="meta">${esc(it.date)} · ${it.lines} lines</div>
+        <div class="row">
+          ${it.video ? `<button class="btn sm" onclick='play(${JSON.stringify(it.video)}, ${JSON.stringify(it.name)})'>▶ Play</button>` : ''}
+          <button class="btn sm" onclick='openFolder(${JSON.stringify(it.folder)})'>📁 Folder</button>
+          ${it.recordable ? `<a class="btn sm" href="/record?dir=${encodeURIComponent(it.folder)}">🎙 Record</a>` : ''}
+        </div>
+      </div>`).join('') : '<div class="empty">No videos yet.</div>';
+  } catch(e) { $('recentList').innerHTML = '<div class="empty">Could not load.</div>'; }
+}
+async function loadQueue(){
+  try {
+    const j = await (await fetch('/api/batch-queue')).json();
+    const q = j.queue || [];
+    const waiting = q.filter(t => t.status === 'pending' || t.status === 'processing').length;
+    $('queueCount').textContent = waiting; $('queueCount').className = 'pill' + (waiting ? ' run' : '');
+    const cls = {processing:'run', running:'run', done:'done', completed:'done', failed:'fail', error:'fail'};
+    $('queueList').innerHTML = q.length ? q.slice(-8).reverse().map(t => `
+      <div class="item"><div class="row" style="margin:0;justify-content:space-between;flex-wrap:nowrap">
+        <div class="nm" title="${esc(t.job_name)}">${esc(t.job_name)}</div><span class="pill ${cls[t.status]||''}">${esc(t.status)}</span>
+      </div></div>`).join('') : '<div class="empty">Nothing waiting. Use “Add to queue” to line up several videos.</div>';
+  } catch(e) {}
+}
+function play(path, name){ $('playerTitle').textContent = name; $('playerVideo').src = '/stream-video?path=' + encodeURIComponent(path); $('playerModal').classList.remove('hidden'); $('playerVideo').play(); }
+function closePlayer(){ $('playerVideo').pause(); $('playerVideo').removeAttribute('src'); $('playerModal').classList.add('hidden'); }
+
+/* ── screen preview editor (logo, subtitles, blur box) ───────────────── */
+// Everything is stored as fractions so the render matches this preview:
+//   p   logo top-left (x, y) + width (w) of the final frame → logoPos "xy:x,y" / logoSize "w:w"
+//   sub gap under the subtitle line as a fraction of frame height → subPos "y:0.09"
+//   hb  blur box over the original subtitles, fractions of the SOURCE picture → hideBox "x,y,w,h"
+const LogoEd = {
+  p: {x: 0.83, y: 0.04, w: 0.14, op: 0.85},
+  sub: {y: 26 / 288},
+  hb: {on: false, x: 0.06, y: 0.74, w: 0.88, h: 0.09},
+  url: null, key: undefined, ar: 16/9, logoAr: 1, ready: false, tab: 'subs',
+  HINTS: {subs: 'Drag the subtitle up or down', logo: 'Drag the logo · orange dot = resize', hide: 'Drag the blue box over the old text · orange dot = resize'},
+  // one tab at a time: only its item is outlined on the screen and only its controls show
+  setTab(t){
+    this.tab = t;
+    $('stage').dataset.tab = t;
+    document.querySelectorAll('.tabs [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === t); b.setAttribute('aria-selected', b.dataset.tab === t); });
+    document.querySelectorAll('.pane').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== t));
+    this.layout();
+  },
+  ratio(){ return $('optRatio').value; },
+  frameAr(){ const r = this.ratio(); return r === '9:16' ? 9/16 : r === '1:1' ? 1 : this.ar; },
+  logoOn(){ return $('optLogo').checked && state.logoExists; },
+  logoH(){ return this.p.w * this.frameAr() / this.logoAr; },
+  clamp(){
+    const p = this.p; p.w = Math.min(0.6, Math.max(0.03, p.w));
+    p.x = Math.min(1 - p.w, Math.max(0, p.x)); p.y = Math.min(Math.max(0, 1 - this.logoH()), Math.max(0, p.y));
+    const b = this.hb; b.w = Math.min(1, Math.max(0.04, b.w)); b.h = Math.min(1, Math.max(0.02, b.h));
+    b.x = Math.min(1 - b.w, Math.max(0, b.x)); b.y = Math.min(1 - b.h, Math.max(0, b.y));
+    this.sub.y = Math.min(0.8, Math.max(0, this.sub.y));
+  },
+  hideBoxParam(){
+    const b = this.hb;
+    return b.on ? [b.x, b.y, b.w, b.h].map(v => v.toFixed(4)).join(',') : '';
+  },
+  // called when the logo switch / image changes
+  sync(reloadImg){
+    if (this.logoOn() && (reloadImg || !$('lgImg').getAttribute('src'))) $('lgImg').src = '/logo-preview?t=' + Date.now();
+    this.loadVideo(); this.layout();
+  },
+  loadVideo(){
+    const f = state.source === 'file' ? state.files[0] : null;
+    const key = f ? f.name + f.size : state.source;
+    if (key === this.key) return;
+    this.key = key;
+    if (this.url) { URL.revokeObjectURL(this.url); this.url = null; }
+    const fg = $('stageFg'), bg = $('stageBg');
+    this.ready = false; this.ar = 16/9;
+    $('stagePh').classList.remove('hidden'); fg.classList.add('hidden'); bg.classList.add('hidden');
+    $('stagePh').innerHTML = state.source === 'url'
+      ? 'Link videos download later — this is a sample screen.'
+      : 'Choose a video in step 1 to see it here.';
+    $('frameSlider').disabled = true;
+    $('frameLbl').textContent = '0:00';
+    if (!f) { fg.removeAttribute('src'); bg.removeAttribute('src'); this.layout(); return; }
+    this.url = URL.createObjectURL(f);
+    fg.src = this.url; bg.src = this.url;
+    this.layout();
+  },
+  seek(){
+    const fg = $('stageFg'), bg = $('stageBg');
+    if (!fg.duration || !isFinite(fg.duration)) return;
+    const t = fg.duration * $('frameSlider').value / 1000;
+    fg.currentTime = t; bg.currentTime = t;
+    const m = Math.floor(t / 60), sec = Math.floor(t % 60);
+    $('frameLbl').textContent = `${m}:${String(sec).padStart(2, '0')}`;
+  },
+  layout(){
+    const st = $('stage'), r = this.ratio(), far = this.frameAr();
+    st.style.aspectRatio = String(far);
+    st.classList.toggle('tall', far < 1.2);
+    st.classList.toggle('orig', r === 'original');
+    $('stageBg').classList.toggle('hidden', !this.ready || r === 'original');
+    document.querySelectorAll('#shapeSeg button').forEach(b => b.classList.toggle('on', b.dataset.r === r));
+    const W = st.clientWidth, H = st.clientHeight;
+    // the source picture's area inside the frame (centred band on 9:16 / 1:1 canvases)
+    const vb = $('vidBox');
+    if (r === 'original') Object.assign(vb.style, {left: '0', top: '0', width: '100%', height: '100%'});
+    else { const vh = W / this.ar; Object.assign(vb.style, {left: '0', width: '100%', height: vh + 'px', top: ((H - vh) / 2) + 'px'}); }
+    // subtitle sample: libass lays SRT out on a 288-row canvas; MarginV = sub.y × 288
+    const subsOn = $('optSubs').checked, subs = $('stageSubs');
+    subs.classList.toggle('hidden', !subsOn);
+    $('subCtrls').classList.toggle('off', !subsOn);
+    subs.classList.toggle('box', $('optBox').checked);
+    subs.style.fontSize = (+$('optSubSize').value / 288 * H) + 'px';
+    subs.style.color = {yellow:'#ffeb3b', white:'#fff', cyan:'#00e5ff', green:'#10b981'}[state.color] || '#fff';
+    // logo
+    const lOn = this.logoOn();
+    $('lg').classList.toggle('hidden', !lOn);
+    $('logoCtrls').classList.toggle('hidden', !lOn);
+    $('logoSecHint').textContent = lOn ? '' : 'Switch on to choose your logo image.';
+    $('stSubs').classList.toggle('on', subsOn); $('stLogo').classList.toggle('on', lOn); $('stHide').classList.toggle('on', this.hb.on);
+    const on = {subs: subsOn, logo: lOn, hide: this.hb.on}[this.tab];
+    $('dragHint').textContent = on ? this.HINTS[this.tab] : '';
+    this.clamp(); this.place();
+  },
+  place(){
+    const p = this.p, lg = $('lg'), st = $('stage');
+    lg.style.left = (p.x * 100) + '%'; lg.style.top = (p.y * 100) + '%'; lg.style.width = (p.w * 100) + '%';
+    $('lgImg').style.opacity = p.op;
+    $('lgSize').value = Math.round(p.w * 100); $('lgSizeLbl').textContent = Math.round(p.w * 100) + '%';
+    $('lgOp').value = Math.round(p.op * 100); $('lgOpLbl').textContent = Math.round(p.op * 100) + '%';
+    lg.setAttribute('aria-valuetext', `left ${Math.round(p.x*100)}%, top ${Math.round(p.y*100)}%`);
+    const subs = $('stageSubs');
+    subs.style.bottom = (this.sub.y * st.clientHeight) + 'px';
+    $('subY').value = Math.round(this.sub.y * 100); $('subYLbl').textContent = Math.round(this.sub.y * 100) + '%';
+    $('subSizeLbl').textContent = $('optSubSize').value;
+    const b = this.hb, hb = $('hb');
+    hb.classList.toggle('hidden', !b.on); $('hbOn').checked = b.on;
+    Object.assign(hb.style, {left: b.x * 100 + '%', top: b.y * 100 + '%', width: b.w * 100 + '%', height: b.h * 100 + '%'});
+    // warn when the logo sits on the subtitle line
+    let hit = false;
+    if (this.logoOn() && !subs.classList.contains('hidden') && st.clientHeight) {
+      const sr = subs.firstElementChild.getBoundingClientRect(), lr = lg.getBoundingClientRect();
+      hit = lr.left < sr.right && lr.right > sr.left && lr.top < sr.bottom && lr.bottom > sr.top;
+    }
+    $('stageWarn').classList.toggle('hidden', !hit);
+  },
+  spot(k){
+    const m = 0.03, p = this.p, h = this.logoH(), my = m * this.frameAr();
+    p.x = k[1] === 'l' ? m : 1 - p.w - m;
+    p.y = k[0] === 't' ? my : 1 - h - my;
+    if (k[0] === 'b' && $('optSubs').checked) p.y = Math.min(p.y, 1 - h - this.sub.y - 0.12); // stay above the subtitles
+    this.clamp(); this.place(); saveChoices();
+  },
+  // pointer drag: onMove(dx, dy, mode, start) gets the pointer travel in px
+  draggable(el, rz, tab, onMove){
+    let mode = null, sx, sy, start;
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (this.tab !== tab) this.setTab(tab);
+      mode = rz && e.target === rz ? 'size' : 'move'; sx = e.clientX; sy = e.clientY;
+      start = JSON.parse(JSON.stringify({p: this.p, sub: this.sub, hb: this.hb}));
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      el.classList.add('drag'); el.focus({preventScroll: true});
+    });
+    el.addEventListener('pointermove', e => {
+      if (!mode) return;
+      onMove(e.clientX - sx, e.clientY - sy, mode, start); this.clamp(); this.place();
+    });
+    const up = () => {
+      if (!mode) return; mode = null; el.classList.remove('drag');
+      $('guideV').classList.remove('on'); $('guideH').classList.remove('on'); saveChoices();
+    };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  },
+  initDrag(){
+    const st = $('stage'), vb = $('vidBox');
+    this.draggable($('lg'), $('lgRz'), 'logo', (dx, dy, mode, s) => {
+      const p = this.p;
+      if (mode === 'size') { p.w = s.p.w + dx / st.clientWidth; return; }
+      p.x = s.p.x + dx / st.clientWidth; p.y = s.p.y + dy / st.clientHeight; this.clamp();
+      // snap to the middle lines
+      const cx = p.x + p.w / 2, cy = p.y + this.logoH() / 2;
+      const snapX = Math.abs(cx - 0.5) < 0.015, snapY = Math.abs(cy - 0.5) < 0.015;
+      if (snapX) p.x = 0.5 - p.w / 2;
+      if (snapY) p.y = 0.5 - this.logoH() / 2;
+      $('guideV').classList.toggle('on', snapX); $('guideH').classList.toggle('on', snapY);
+    });
+    this.draggable($('stageSubs').firstElementChild, null, 'subs', (dx, dy, mode, s) => {
+      this.sub.y = s.sub.y - dy / st.clientHeight;
+    });
+    this.draggable($('hb'), $('hbRz'), 'hide', (dx, dy, mode, s) => {
+      const b = this.hb, W = vb.clientWidth, H = vb.clientHeight;
+      if (mode === 'size') { b.w = s.hb.w + dx / W; b.h = s.hb.h + dy / H; }
+      else { b.x = s.hb.x + dx / W; b.y = s.hb.y + dy / H; }
+    });
+    const nudge = (el, fn) => el.addEventListener('keydown', e => {
+      const step = e.shiftKey ? 0.05 : 0.01;
+      const d = {ArrowLeft:[-step,0], ArrowRight:[step,0], ArrowUp:[0,-step], ArrowDown:[0,step]}[e.key];
+      if (!d) return;
+      e.preventDefault(); fn(d[0], d[1]); this.clamp(); this.place(); saveChoices();
+    });
+    nudge($('lg'), (x, y) => { this.p.x += x; this.p.y += y; });
+    nudge($('hb'), (x, y) => { this.hb.x += x; this.hb.y += y; });
+    // drop an image on the screen to use it as the logo
+    ['dragenter','dragover'].forEach(n => st.addEventListener(n, e => { e.preventDefault(); e.stopPropagation(); st.classList.add('dropping'); }));
+    st.addEventListener('dragleave', () => st.classList.remove('dropping'));
+    st.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation(); st.classList.remove('dropping');
+      const f = [...e.dataTransfer.files].find(x => x.type.startsWith('image/'));
+      if (f) uploadLogo(f); else alert('Drop an image file (PNG, JPG or WEBP) to use as your logo.');
+    });
+  },
+  init(){
+    const fg = $('stageFg');
+    fg.addEventListener('loadedmetadata', () => {
+      if (fg.videoWidth && fg.videoHeight) this.ar = fg.videoWidth / fg.videoHeight;
+      $('frameSlider').disabled = false; this.seek(); this.layout();
+    });
+    fg.addEventListener('loadeddata', () => {
+      this.ready = true; $('stagePh').classList.add('hidden'); fg.classList.remove('hidden'); this.layout();
+    });
+    fg.addEventListener('error', () => {
+      if (!fg.getAttribute('src')) return;
+      $('stagePh').innerHTML = 'This video type can’t be previewed here (it will still dub fine).<br>Showing a sample screen instead.';
+    });
+    $('lgImg').addEventListener('load', () => {
+      const i = $('lgImg'); if (i.naturalWidth) this.logoAr = i.naturalWidth / i.naturalHeight; this.layout();
+    });
+    $('frameSlider').addEventListener('input', () => this.seek());
+    $('lgSize').addEventListener('input', e => {
+      const p = this.p, cx = p.x + p.w / 2, cy = p.y + this.logoH() / 2; // resize around the centre
+      p.w = e.target.value / 100; p.x = cx - p.w / 2; p.y = cy - this.logoH() / 2;
+      this.clamp(); this.place();
+    });
+    $('lgOp').addEventListener('input', e => { this.p.op = e.target.value / 100; this.place(); });
+    $('optSubSize').addEventListener('input', () => this.layout());
+    $('subY').addEventListener('input', e => { this.sub.y = e.target.value / 100; this.place(); });
+    $('hbOn').addEventListener('change', e => { this.hb.on = e.target.checked; this.layout(); saveChoices(); });
+    document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => this.setTab(b.dataset.tab)));
+    ['lgSize','lgOp','optSubSize','subY'].forEach(id => $(id).addEventListener('change', saveChoices));
+    document.querySelectorAll('#shapeSeg button').forEach(b => b.addEventListener('click', () => {
+      $('optRatio').value = b.dataset.r; this.layout(); saveChoices();
+    }));
+    document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click', () => this.spot(b.dataset.spot)));
+    ['optRatio','optSubs','optBox'].forEach(id => $(id).addEventListener('change', () => this.layout()));
+    window.addEventListener('resize', () => this.layout());
+    this.initDrag();
+    this.setTab('subs');
+  },
+};
+LogoEd.init();
+
+/* ── wire up ─────────────────────────────── */
+const drop = $('drop');
+['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('drag'); }));
+['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+$('formView').addEventListener('dragover', e => e.preventDefault());
+$('formView').addEventListener('drop', e => { e.preventDefault(); if (state.source === 'file' && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+$('fileInput').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+$('urlInput').addEventListener('input', updateSteps);
+document.querySelectorAll('#speedSeg button').forEach(b => b.addEventListener('click', () => setRate(b.dataset.rate)));
+document.querySelectorAll('.swatch').forEach(b => b.addEventListener('click', () => setColor(b.dataset.c)));
+$('optBg').addEventListener('change', () => { syncBgVol(); saveChoices(); });
+$('optCast').addEventListener('change', syncCast);
+$('optBgVol').addEventListener('input', () => { syncBgVol(); saveChoices(); });
+['optCast','optTwo','optBlend','optSubs','optLang','optStyle','optEngine','optRatio','optSubSize','optBox','optBilingual','optReview']
+  .forEach(id => $(id).addEventListener('change', saveChoices));
+
+const firstVisit = !store.get('dub_choices');
+renderPresets(); restoreChoices(); loadConfig(); loadVoices(); loadRecent(); loadQueue();
+loadNativeVoices().then(j => { if (j && j.engine_ready && firstVisit) pickVoice('native_female_1', false); });
+setInterval(loadQueue, 10000);
+// this window's job still running (page reopened), or a task opened from the Tasks panel? show it
+const openedTask = new URLSearchParams(location.search).get('task');
+fetch('/progress').then(r => r.json()).then(p => {
+  if (openedTask) { history.replaceState(null, '', '/'); showTask(p); }
+  else if (p.is_processing && isDubTask(p)) { showProgress(); renderProgress(p); poll(); }
+}).catch(() => {});
+</script>
+</body>
+</html>

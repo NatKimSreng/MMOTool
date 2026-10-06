@@ -1,0 +1,11 @@
+flask
+moviepy
+yt-dlp
+openai-whisper
+faster-whisper
+edge-tts
+pydub
+groq
+pyinstaller
+deep-translator
+requests

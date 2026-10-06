@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — DAI Dubber Pro AI Translate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500;600;700&display=swap');
+        :root {
+            --bg: #000;
+            --card: #111;
+            --border: #222;
+            --border-h: #444;
+            --text: #f5f5f5;
+            --dim: #888;
+            --muted: #555;
+            --primary: #fff;
+            --gold: #f59e0b;
+        }
+        body {
+            font-family: 'Inter', 'Kantumruy Pro', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .card:hover { border-color: var(--border-h); }
+        .btn {
+            border: none; cursor: pointer; border-radius: 8px;
+            font-size: 13px; font-weight: 600; padding: 10px 16px;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: all 0.15s;
+        }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: #fff; color: #000; }
+        .btn-primary:hover:not(:disabled) { background: #e5e5e5; }
+        .btn-ghost {
+            background: transparent; color: var(--dim);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover:not(:disabled) { border-color: var(--border-h); color: var(--text); background: #151515; }
+        .btn-danger {
+            background: transparent; color: #ef4444;
+            border: 1px solid #331515;
+        }
+        .btn-danger:hover { background: #2a1111; border-color: #ef4444; }
+        .input {
+            width: 100%; background: #000; border: 1px solid var(--border);
+            border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 13px;
+            outline: none;
+        }
+        .input:focus { border-color: #666; }
+        .label {
+            font-size: 11px; font-weight: 600; color: var(--dim);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 6px; display: block;
+        }
+        .nav-link {
+            color: var(--dim); font-size: 13px; font-weight: 500; text-decoration: none;
+            padding: 6px 12px; border-radius: 6px;
+        }
+        .nav-link:hover { color: var(--text); background: #151515; }
+        .nav-link.active { color: var(--text); }
+        .section-title {
+            font-size: 11px; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+        }
+        .status-dot.on { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+        .status-dot.off { background: #444; border: 1px solid #666; }
+        select.input option { background: #111; color: #fff; }
+        a { color: #aaa; }
+        a:hover { color: #fff; }
+        .toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: #fff; color: #000; padding: 10px 20px; border-radius: 8px;
+            font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 0.2s;
+            pointer-events: none; z-index: 50; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .toast.show { opacity: 1; }
+        .badge-pro {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #000; font-size: 10px; font-weight: 800; padding: 2px 7px;
+            border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+    </style>
+<script src="/static/js/tasks.js"></script>
+</head>
+<body>
+
+<header class="border-b border-[#222] bg-[#0a0a0a] px-5 py-3 flex items-center justify-between sticky top-0 z-20">
+    <div class="flex items-center gap-6">
+        <a href="/" class="flex items-center gap-2 no-underline">
+            <span class="w-7 h-7 rounded bg-white text-black flex items-center justify-center text-xs font-bold">DP</span>
+            <span class="text-sm font-semibold text-white">DAI Dubber Pro</span>
+            <span class="badge-pro ml-1">AI Translate</span>
+        </a>
+        <nav class="hidden sm:flex items-center gap-1">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/studio" class="nav-link">Studio Editor</a>
+            <a href="/settings" class="nav-link active">Settings</a>
+        </nav>
+    </div>
+    <a href="/" class="btn btn-ghost text-xs">← Back to Dashboard</a>
+</header>
+
+<main class="max-w-xl mx-auto px-4 py-8 space-y-6">
+
+    <div>
+        <div class="flex items-center gap-2 mb-1">
+            <h1 class="text-xl font-semibold text-white">AI Engine &amp; Audio Settings</h1>
+            <span class="badge-pro">PRO</span>
+        </div>
+        <p class="text-xs text-[#666]">Configure Gemini, OpenAI, Groq, Kiri, and Dubbing BGM defaults.</p>
+    </div>
+
+    <!-- Live Status Dashboard -->
+    <div class="card p-5">
+        <div class="section-title">Engine Connectivity Status</div>
+        <div class="space-y-3 text-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-[#888] flex items-center gap-2">
+                    <span>🌟</span> Google Gemini AI (Khmer Translation)
+                </span>
+                <span id="stGemini" class="flex items-center gap-2 text-xs text-[#888]">
+                    <span class="status-dot off"></span> Not set
+                </span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-[#888] flex items-center gap-2">
+                    <span>🧠</span> OpenAI API (GPT-4o)
+                </span>
+                <span id="stOpenai" class="flex items-center gap-2 text-xs text-[#888]">
+                    <span class="status-dot off"></span> Not set
+                </span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-[#888] flex items-center gap-2">
+                    <span>🚀</span> Groq API (Llama 3.3 / Whisper)
+                </span>
+                <span id="stGroq" class="flex items-center gap-2 text-xs text-[#888]">
+                    <span class="status-dot off"></span> Not set
+                </span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-[#888] flex items-center gap-2">
+                    <span>🇰🇭</span> Kiri STT (Khmer Speech-to-Text)
+                </span>
+                <span id="stKiri" class="flex items-center gap-2 text-xs text-[#888]">
+                    <span class="status-dot off"></span> Not set
+                </span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-[#888] flex items-center gap-2">
+                    <span>🎙️</span> ElevenLabs Voice Cloning API
+                </span>
+                <span id="stElevenlabs" class="flex items-center gap-2 text-xs text-[#888]">
+                    <span class="status-dot off"></span> Not set
+                </span>
+            </div>
+            <div class="border-t border-[#222] pt-3 flex items-center justify-between text-xs">
+                <span class="text-[#666]">Active Translation Engine</span>
+                <span id="stTranslateEngine" class="text-white font-semibold">Auto</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+                <span class="text-[#666]">Audio Dubbing Mode</span>
+                <span id="stDubMode" class="text-white font-semibold">Smart BGM Auto-Ducking</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Gemini AI (Recommended for Khmer) -->
+    <div class="card p-5 border-[#333]">
+        <div class="flex items-center justify-between mb-2">
+            <div class="section-title text-white mb-0">🌟 Google Gemini API (Recommended for Khmer)</div>
+            <span class="text-[10px] bg-green-950 text-green-400 border border-green-800 px-2 py-0.5 rounded font-mono">Free Tier Available</span>
+        </div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            Google Gemini produces the most natural, flowing Khmer story narration and movie recap phrasing.
+            Get your free API key at
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-white underline">Google AI Studio (aistudio.google.com)</a>.
+        </p>
+        <label class="label">Gemini API Key</label>
+        <input type="password" id="geminiKey" class="input mb-3" placeholder="AIzaSy...." autocomplete="off">
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1 justify-center" onclick="saveGemini()">Save Gemini Key</button>
+            <button class="btn btn-ghost" onclick="testKey('gemini')">⚡ Test Connection</button>
+            <button class="btn btn-danger" onclick="clearGemini()">Clear</button>
+        </div>
+        <p id="geminiMsg" class="text-xs text-[#888] mt-2 hidden"></p>
+    </div>
+
+    <!-- OpenAI API -->
+    <div class="card p-5">
+        <div class="section-title">🧠 OpenAI API (GPT-4o / GPT-4o-mini)</div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            High precision translation and optional cloud Whisper transcription.
+            Key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-white underline">platform.openai.com</a>.
+        </p>
+        <label class="label">OpenAI API Key</label>
+        <input type="password" id="openaiKey" class="input mb-3" placeholder="sk-...." autocomplete="off">
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1 justify-center" onclick="saveOpenai()">Save OpenAI Key</button>
+            <button class="btn btn-ghost" onclick="testKey('openai')">⚡ Test Connection</button>
+            <button class="btn btn-danger" onclick="clearOpenai()">Clear</button>
+        </div>
+        <p id="openaiMsg" class="text-xs text-[#888] mt-2 hidden"></p>
+    </div>
+
+    <!-- Groq API -->
+    <div class="card p-5">
+        <div class="section-title">🚀 Groq API (Ultra-Fast STT &amp; Llama 3.3)</div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            Ultra-fast Whisper for Chinese/English audio + Llama 3.3 70B.
+            Key from <a href="https://console.groq.com/keys" target="_blank" class="text-white underline">console.groq.com</a>.
+        </p>
+        <label class="label">Groq API Key</label>
+        <input type="password" id="groqKey" class="input mb-3" placeholder="gsk_...." autocomplete="off">
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1 justify-center" onclick="saveGroq()">Save Groq Key</button>
+            <button class="btn btn-ghost" onclick="testKey('groq')">⚡ Test Connection</button>
+            <button class="btn btn-danger" onclick="clearGroq()">Clear</button>
+        </div>
+        <p id="groqMsg" class="text-xs text-[#888] mt-2 hidden"></p>
+    </div>
+
+    <!-- Kiri API -->
+    <div class="card p-5">
+        <div class="section-title">🇰🇭 Kiri STT (Khmer Speech-to-Text)</div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            Cloud ASR built specifically for native Khmer speech.
+            Key from <a href="https://kiritts.com" target="_blank" class="text-white underline">kiritts.com</a>.
+        </p>
+        <label class="label">Kiri API Key</label>
+        <input type="password" id="kiriKey" class="input mb-3" placeholder="kiri_...." autocomplete="off">
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1 justify-center" onclick="saveKiri()">Save Kiri Key</button>
+            <button class="btn btn-ghost" onclick="testKey('kiri')">⚡ Test Connection</button>
+            <button class="btn btn-danger" onclick="clearKiri()">Clear</button>
+        </div>
+        <p id="kiriMsg" class="text-xs text-[#888] mt-2 hidden"></p>
+    </div>
+
+    <!-- ElevenLabs Voice Cloning API -->
+    <div class="card p-5 border-[#333]">
+        <div class="flex items-center justify-between mb-2">
+            <div class="section-title text-white mb-0">🎙️ ElevenLabs Voice Cloning API</div>
+            <span class="badge-pro">PRO CLONING</span>
+        </div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            Industry gold standard for human-realistic voice cloning &amp; multilingual speech.
+            Clone any actor, movie dialogue, or internet speaker directly to your account.
+            Get your key from <a href="https://elevenlabs.io" target="_blank" class="text-white underline">elevenlabs.io</a>.
+        </p>
+        <label class="label">ElevenLabs API Key</label>
+        <input type="password" id="elevenlabsKey" class="input mb-3" placeholder="sk_... or xi-api-key" autocomplete="off">
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1 justify-center" onclick="saveElevenlabs()">Save ElevenLabs Key</button>
+            <button class="btn btn-ghost" onclick="testKey('elevenlabs')">⚡ Test Connection</button>
+            <button class="btn btn-danger" onclick="clearElevenlabs()">Clear</button>
+        </div>
+        <p id="elevenlabsMsg" class="text-xs text-[#888] mt-2 hidden"></p>
+    </div>
+
+    <!-- Cinema Studio Mastering DSP -->
+    <div class="card p-5">
+        <div class="flex items-center justify-between mb-2">
+            <div class="section-title text-white mb-0">🎬 Cinema Studio Voice Mastering (DSP)</div>
+            <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded font-mono">Hollywood Grade</span>
+        </div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            Eliminates robotic/tinny sound by running speech through a 7-stage studio mastering chain:
+            <b class="text-white">75Hz Sub-Cut</b>, <b class="text-white">160Hz Chest Warmth</b>, <b class="text-white">3.3kHz Vocal Clarity</b>, <b class="text-white">7.5kHz De-Esser</b>, and <b class="text-white">Broadcast Dynamic Compressor</b>.
+        </p>
+        <label class="flex items-center gap-3 text-sm text-white cursor-pointer bg-[#000] p-3 rounded-lg border border-[#222]">
+            <input type="checkbox" id="chkStudioDsp" checked class="accent-amber-400 w-4 h-4" onchange="saveStudioDsp(this.checked)">
+            <div>
+                <span class="font-semibold block text-xs">Enable Cinema Studio Mastering Chain</span>
+                <span class="text-[11px] text-[#888]">Applies analog warmth, proximity effect, and broadcast vocal leveling to all dubbing audio</span>
+            </div>
+        </label>
+    </div>
+
+    <!-- Voice Cloning Studio & Library -->
+    <div class="card p-5">
+        <div class="flex items-center justify-between mb-2">
+            <div class="section-title text-white mb-0">🎙️ Voice Cloning Studio &amp; Library</div>
+            <span class="badge-pro">CLONE FROM INTERNET</span>
+        </div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            Clone real human voices directly from YouTube, internet video links, or audio files (MP3/WAV).
+            Assign each cloned voice to a character role (Girl, Boy, Man, Woman, Old Man, Old Woman, etc.) to automatically voice movie characters.
+        </p>
+
+        <!-- Clone Inputs -->
+        <div class="bg-[#000] border border-[#222] p-4 rounded-lg space-y-4 mb-5">
+            <div class="flex gap-2 border-b border-[#222] pb-2 text-xs">
+                <button id="settingsTabUrl" class="px-3 py-1.5 rounded bg-white text-black font-semibold" onclick="switchSettingsCloneTab('url')">🌐 YouTube / Web URL</button>
+                <button id="settingsTabUpload" class="px-3 py-1.5 rounded bg-transparent text-gray-400 hover:text-white font-semibold" onclick="switchSettingsCloneTab('upload')">📁 Upload Audio File</button>
+            </div>
+
+            <div id="settingsUrlPane" class="space-y-3">
+                <div>
+                    <label class="label">YouTube / Web Audio URL</label>
+                    <input type="text" id="settingsCloneUrl" class="input" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="label">Start Offset (seconds)</label>
+                        <input type="number" id="settingsCloneStart" class="input" value="0" min="0">
+                    </div>
+                    <div>
+                        <label class="label">Duration (seconds)</label>
+                        <input type="number" id="settingsCloneDuration" class="input" value="40" min="10" max="120">
+                    </div>
+                </div>
+            </div>
+
+            <div id="settingsUploadPane" class="space-y-3 hidden">
+                <div>
+                    <label class="label">Upload Audio or Video</label>
+                    <input type="file" id="settingsCloneFile" accept="audio/*,video/*" class="input">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="label">Voice Name</label>
+                    <input type="text" id="settingsCloneName" class="input" placeholder="e.g. Sweet Girl, Wise Grandpa">
+                </div>
+                <div>
+                    <label class="label">Character Role</label>
+                    <select id="settingsCloneRole" class="input">
+                        <option value="girl">👧 Girl (ក្រមុំ / តួស្រី)</option>
+                        <option value="boy">👦 Boy (កំលោះ / តួប្រុស)</option>
+                        <option value="man">👨 Man (បុរស)</option>
+                        <option value="woman">👩 Woman (ស្ត្រី)</option>
+                        <option value="old_man">👴 Old Man (លោកតា)</option>
+                        <option value="old_woman">👵 Old Woman (លោកយាយ)</option>
+                        <option value="villain">🦹 Villain (តួអាក្រក់)</option>
+                        <option value="child">👶 Child (ក្មេងតូច)</option>
+                        <option value="narrator">🎙️ Narrator (អ្នកនិទាន)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs text-gray-300 flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="settingsCloneSetDefault" checked class="accent-white">
+                    <span>Set as default voice for this character role</span>
+                </label>
+                <label class="text-xs text-gray-300 flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="settingsCloneToEleven" checked class="accent-amber-400">
+                    <span>Clone to ElevenLabs AI Voice (if API key configured)</span>
+                </label>
+            </div>
+
+            <button class="btn btn-primary w-full justify-center text-xs py-2" id="btnSettingsClone" onclick="submitSettingsClone()">
+                🎙️ Extract &amp; Clone Voice
+            </button>
+        </div>
+
+        <!-- Cloned Voices List -->
+        <div>
+            <div class="section-title flex justify-between items-center mb-2">
+                <span>Active Cloned Voices Library</span>
+                <span id="clonedCountBadge" class="text-[11px] text-[#888]">0 voices</span>
+            </div>
+            <div id="clonedVoicesList" class="space-y-2">
+                <div class="text-center py-6 text-xs text-[#666]">Loading cloned voices...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character Cast Role Voice Mapping -->
+    <div class="card p-5">
+        <div class="flex items-center justify-between mb-2">
+            <div class="section-title text-white mb-0">👥 Character Cast Voice Mapping</div>
+            <span class="badge-pro">MULTI-CHARACTER</span>
+        </div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            Customize which voice profile (built-in or cloned) is automatically assigned when each character role is detected.
+        </p>
+        <div class="space-y-3" id="roleMappingContainer">
+            <!-- Dynamically populated with 9 character roles and voice dropdowns -->
+        </div>
+        <button class="btn btn-primary w-full justify-center mt-4 text-xs py-2" onclick="saveRoleVoiceMappings()">
+            Save Character Role Voice Mappings
+        </button>
+    </div>
+
+    <!-- Translation & Dubbing Defaults -->
+    <div class="card p-5">
+        <div class="section-title">Translation &amp; Dubbing Defaults</div>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="label">Default Translation Engine</label>
+                <select id="defaultTranslateEngine" class="input">
+                    <option value="auto">⚡ Auto (Best available: Gemini → OpenAI → Groq → Google)</option>
+                    <option value="gemini">🌟 Google Gemini AI (Recommended for Khmer)</option>
+                    <option value="openai">🧠 OpenAI (GPT-4o-mini)</option>
+                    <option value="groq">🚀 Groq (Llama 3.3 70B)</option>
+                    <option value="google">🌐 Google Translate (Free, no API key)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="label">Default Translation Style / Prompt</label>
+                <select id="defaultTranslateStyle" class="input">
+                    <option value="recap">🎬 Movie Recap / Storytelling (សម្រាយរឿង / និទានរឿង)</option>
+                    <option value="dialogue">💬 Movie &amp; Drama Dialogue (សន្ទនាតួអង្គពិតៗ)</option>
+                    <option value="general">🌐 General / Balanced (ទូទៅ)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="label">Default Dubbing Audio Mode</label>
+                <select id="defaultDubbingMode" class="input">
+                    <option value="duck">🎵 Smart BGM Auto-Ducking (Keep BGM, lower during speech) [Recommended]</option>
+                    <option value="mute">🔇 Voice Only (Mute Original BGM)</option>
+                    <option value="mix">🎚️ Custom Mix (Fixed volume balance)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="label">Default Character Voice Profile</label>
+                <div class="flex gap-2">
+                    <select id="defaultVoice" class="input flex-1">
+                        <option value="narrator_female">🎙️ និទានស្រី (Female Narrator) — Warm &amp; Engaging</option>
+                        <option value="narrator_male">🎙️ និទានប្រុស (Male Narrator) — Confident &amp; Steady</option>
+                        <option value="hero_male">👦 តួឯកប្រុស / កំលោះ (Hero / Young Male)</option>
+                        <option value="heroine_female">👧 តួឯកស្រី / ក្រមុំ (Heroine / Young Female)</option>
+                        <option value="elder_male">👴 មនុស្សចាស់ / តា (Elder Male)</option>
+                        <option value="elder_female">👵 យាយ / ចាស់ទុំ (Elder Female)</option>
+                        <option value="villain_male">🦹 តួអាក្រក់ / ម៉ឺងម៉ាត់ (Villain / Boss)</option>
+                        <option value="child">👶 ក្មេងតូច (Child / Kid)</option>
+                        <option value="soft_female">🌸 ស្រីស្រទន់ / កម្សត់ (Soft / Emotional)</option>
+                        <option value="recap_fast">⚡ សម្រាយរហ័ស (Fast Recap Narrator)</option>
+                        <option value="female">Sreymom (Standard Female)</option>
+                        <option value="male">Piseth (Standard Male)</option>
+                    </select>
+                    <button class="btn btn-ghost" onclick="testVoicePreview()" title="Preview sample">🔊 Test</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="label">Subtitle Default Color</label>
+                    <select id="subColor" class="input">
+                        <option value="yellow">Cinema Yellow (#FFEB3B)</option>
+                        <option value="white">Clean White (#FFFFFF)</option>
+                        <option value="cyan">Modern Cyan (#00E5FF)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label">Subtitle Font Size</label>
+                    <select id="subSize" class="input">
+                        <option value="20">Normal (20px)</option>
+                        <option value="22" selected>Medium (22px)</option>
+                        <option value="26">Large (26px)</option>
+                        <option value="30">Extra Large (30px)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary w-full justify-center" onclick="saveAllDefaults()">Save Dubbing Defaults</button>
+        </div>
+    </div>
+
+    <!-- Storage -->
+    <div class="card p-5">
+        <div class="section-title">🧹 Storage — uploaded videos</div>
+        <p class="text-xs text-[#888] mb-3 leading-relaxed">The app keeps a copy of every video you send it in the <code>uploads</code> folder.
+            Copies that no job needs any more can be deleted — your finished videos in the output folders are never touched, and files that
+            paused jobs, the queue, or <b class="text-white">Re-voice with my voice</b> still need are always kept.</p>
+        <div id="upInfo" class="text-sm mb-3">Checking…</div>
+        <div class="flex flex-wrap gap-3 items-end">
+            <div>
+                <label class="label">Delete unused copies automatically after</label>
+                <select id="upKeepDays" class="input" onchange="saveUploadKeepDays()">
+                    <option value="1">1 day</option>
+                    <option value="3">3 days</option>
+                    <option value="7">7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30">30 days</option>
+                    <option value="0">Never</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" id="upCleanBtn" onclick="cleanUploadsNow()">Free up space now</button>
+        </div>
+    </div>
+
+    <!-- About -->
+    <div class="card p-5">
+        <div class="section-title">About DAI Dubber Pro</div>
+        <div class="text-xs text-[#666] space-y-2 leading-relaxed">
+            <p><b class="text-white">Smart BGM Auto-Ducking:</b> Preserves the video's original soundtrack &amp; action effects while smoothly lowering volume whenever Khmer speech plays.</p>
+            <p><b class="text-white">Gemini Storytelling AI:</b> Translates drama recaps into natural spoken Khmer.</p>
+            <p>Config file: <code class="text-[#888]" id="cfgPath">config.json</code></p>
+            <p>API keys are kept in your Windows user folder (not in the app folder, so sharing or zipping the app folder never shares them):
+                <code class="text-[#888]" id="keysPath"></code></p>
+        </div>
+    </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+async function load() {
+    try {
+        const r = await fetch('/config');
+        const c = await r.json();
+
+        // Gemini
+        const sg = document.getElementById('stGemini');
+        if (c.has_gemini_key) {
+            sg.innerHTML = '<span class="status-dot on"></span> <span class="text-white">Connected ' + (c.gemini_key_hint || '') + '</span>';
+        } else {
+            sg.innerHTML = '<span class="status-dot off"></span> Not set';
+        }
+
+        // OpenAI
+        const so = document.getElementById('stOpenai');
+        if (c.has_openai_key) {
+            so.innerHTML = '<span class="status-dot on"></span> <span class="text-white">Connected ' + (c.openai_key_hint || '') + '</span>';
+        } else {
+            so.innerHTML = '<span class="status-dot off"></span> Not set';
+        }
+
+        // Groq
+        const st = document.getElementById('stGroq');
+        if (c.has_groq_key) {
+            st.innerHTML = '<span class="status-dot on"></span> <span class="text-white">Connected ' + (c.groq_key_hint || '') + '</span>';
+        } else {
+            st.innerHTML = '<span class="status-dot off"></span> Not set';
+        }
+
+        // Kiri
+        const sk = document.getElementById('stKiri');
+        if (c.has_kiri_key) {
+            sk.innerHTML = '<span class="status-dot on"></span> <span class="text-white">Connected ' + (c.kiri_key_hint || '') + '</span>';
+        } else {
+            sk.innerHTML = '<span class="status-dot off"></span> Not set';
+        }
+
+        // ElevenLabs
+        const se = document.getElementById('stElevenlabs');
+        if (se) {
+            if (c.has_elevenlabs_key) {
+                se.innerHTML = '<span class="status-dot on"></span> <span class="text-white">Connected ' + (c.elevenlabs_key_hint || '') + '</span>';
+            } else {
+                se.innerHTML = '<span class="status-dot off"></span> Not set';
+            }
+        }
+
+        // Studio Cinema DSP
+        const chkDsp = document.getElementById('chkStudioDsp');
+        if (chkDsp) chkDsp.checked = (c.studio_cinema_dsp !== false);
+
+        // Load Cloned Voices & Role Cast Mappings
+        loadClonedVoicesSettings();
+        loadRoleMappingsSettings(c.role_voice_map || {});
+
+        // Defaults
+        if (c.default_translate_engine) {
+            document.getElementById('defaultTranslateEngine').value = c.default_translate_engine;
+            document.getElementById('stTranslateEngine').textContent = c.default_translate_engine.toUpperCase();
+        }
+        if (c.default_translate_style) {
+            document.getElementById('defaultTranslateStyle').value = c.default_translate_style;
+        }
+        if (c.default_dubbing_mode) {
+            document.getElementById('defaultDubbingMode').value = c.default_dubbing_mode;
+            document.getElementById('stDubMode').textContent = c.default_dubbing_mode === 'duck' ? 'Smart BGM Auto-Ducking' : (c.default_dubbing_mode === 'mute' ? 'Voice Only' : 'Custom Mix');
+        }
+        if (c.default_voice || c.tts_voice) {
+            document.getElementById('defaultVoice').value = c.default_voice || c.tts_voice;
+        }
+        if (c.sub_color) document.getElementById('subColor').value = c.sub_color;
+        if (c.sub_size) document.getElementById('subSize').value = c.sub_size;
+
+        if (c.config_path) {
+            const el = document.getElementById('cfgPath');
+            if (el) el.textContent = c.config_path + (c.config_exists ? '' : ' (missing)');
+        }
+        if (c.keys_path) document.getElementById('keysPath').textContent = c.keys_path;
+    } catch (e) {
+        console.error('Config load failed', e);
+    }
+}
+
+async function testKey(type) {
+    const inputId = type + 'Key';
+    const msgId = type + 'Msg';
+    const val = document.getElementById(inputId).value.trim();
+    const msgEl = document.getElementById(msgId);
+    
+    if (msgEl) {
+        msgEl.textContent = 'Testing connection...';
+        msgEl.classList.remove('hidden', 'text-red-400', 'text-green-400');
+        msgEl.classList.add('text-[#888]');
+    }
+
+    try {
+        const r = await fetch('/test-api-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: type, key: val })
+        });
+        const d = await r.json();
+        if (d.success) {
+            if (msgEl) {
+                msgEl.textContent = '✓ ' + d.message;
+                msgEl.classList.remove('text-[#888]', 'text-red-400');
+                msgEl.classList.add('text-green-400');
+            }
+            toast(d.message);
+        } else {
+            if (msgEl) {
+                msgEl.textContent = '✗ ' + (d.error || 'Connection failed');
+                msgEl.classList.remove('text-[#888]', 'text-green-400');
+                msgEl.classList.add('text-red-400');
+            }
+            alert('Error: ' + d.error);
+        }
+    } catch (err) {
+        if (msgEl) {
+            msgEl.textContent = '✗ Network error: ' + err.message;
+            msgEl.classList.add('text-red-400');
+        }
+    }
+}
+
+async function saveGemini() {
+    const key = document.getElementById('geminiKey').value.trim();
+    if (!key) return alert('Paste your Google Gemini API key');
+    const r = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ GEMINI_API_KEY: key, default_translate_engine: 'gemini' })
+    });
+    const d = await r.json();
+    if (d.success) {
+        document.getElementById('geminiKey').value = '';
+        toast('Gemini Key Saved ✓');
+        load();
+    } else alert('Save failed');
+}
+
+async function clearGemini() {
+    if (!confirm('Remove Gemini API key?')) return;
+    await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ GEMINI_API_KEY: '' })
+    });
+    toast('Gemini Key cleared');
+    load();
+}
+
+async function saveOpenai() {
+    const key = document.getElementById('openaiKey').value.trim();
+    if (!key) return alert('Paste your OpenAI API key');
+    const r = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ OPENAI_API_KEY: key })
+    });
+    const d = await r.json();
+    if (d.success) {
+        document.getElementById('openaiKey').value = '';
+        toast('OpenAI Key Saved ✓');
+        load();
+    } else alert('Save failed');
+}
+
+async function clearOpenai() {
+    if (!confirm('Remove OpenAI API key?')) return;
+    await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ OPENAI_API_KEY: '' })
+    });
+    toast('OpenAI Key cleared');
+    load();
+}
+
+async function saveGroq() {
+    const key = document.getElementById('groqKey').value.trim();
+    if (!key) return alert('Paste your Groq API key');
+    const r = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ GROQ_API_KEY: key })
+    });
+    const d = await r.json();
+    if (d.success) {
+        document.getElementById('groqKey').value = '';
+        toast('Groq Key Saved ✓');
+        load();
+    } else alert('Save failed');
+}
+
+async function clearGroq() {
+    if (!confirm('Remove Groq API key?')) return;
+    await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ GROQ_API_KEY: '' })
+    });
+    toast('Groq Key cleared');
+    load();
+}
+
+async function saveKiri() {
+    const key = document.getElementById('kiriKey').value.trim();
+    if (!key) return alert('Paste your Kiri API key');
+    const r = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ KIRI_API_KEY: key })
+    });
+    const d = await r.json();
+    if (d.success) {
+        document.getElementById('kiriKey').value = '';
+        toast('Kiri Key Saved ✓');
+        load();
+    } else alert('Save failed');
+}
+
+async function clearKiri() {
+    if (!confirm('Remove Kiri API key?')) return;
+    await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ KIRI_API_KEY: '' })
+    });
+    toast('Kiri Key cleared');
+    load();
+}
+
+async function saveAllDefaults() {
+    const data = {
+        default_translate_engine: document.getElementById('defaultTranslateEngine').value,
+        default_translate_style: document.getElementById('defaultTranslateStyle').value,
+        default_dubbing_mode: document.getElementById('defaultDubbingMode').value,
+        default_voice: document.getElementById('defaultVoice').value,
+        tts_voice: document.getElementById('defaultVoice').value,
+        sub_color: document.getElementById('subColor').value,
+        sub_size: parseInt(document.getElementById('subSize').value),
+    };
+    const r = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const d = await r.json();
+    if (d.success) {
+        toast('All Dubbing Defaults Saved ✓');
+        load();
+    } else {
+        alert('Save failed: ' + d.message);
+    }
+}
+
+async function testVoicePreview() {
+    const voice = document.getElementById('defaultVoice').value;
+    toast('Generating sample voice...');
+    try {
+        const r = await fetch('/preview-voice-sample', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                voice: voice,
+                text: 'ជម្រាបសួរ! នេះជាការសាកល្បងសំឡេងនិទានរឿងរបស់ DAI Dubber Pro។'
+            })
+        });
+        const d = await r.json();
+        if (d.success && d.audio) {
+            const audio = new Audio(d.audio);
+            audio.play();
+        } else {
+            alert('Preview error: ' + (d.error || 'Failed'));
+        }
+    } catch (e) {
+        alert('Audio error: ' + e.message);
+    }
+}
+
+// ElevenLabs API key save / clear
+async function saveElevenlabs() {
+    const key = document.getElementById('elevenlabsKey').value.trim();
+    if (!key) return alert('Paste your ElevenLabs API key');
+    const r = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ELEVENLABS_API_KEY: key })
+    });
+    const d = await r.json();
+    if (d.success) {
+        document.getElementById('elevenlabsKey').value = '';
+        toast('ElevenLabs Key Saved ✓');
+        load();
+    } else alert('Save failed');
+}
+
+async function clearElevenlabs() {
+    if (!confirm('Remove ElevenLabs API key?')) return;
+    await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ELEVENLABS_API_KEY: '' })
+    });
+    toast('ElevenLabs Key cleared');
+    load();
+}
+
+async function saveStudioDsp(checked) {
+    await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studio_cinema_dsp: checked })
+    });
+    toast(checked ? 'Cinema Studio DSP Mastering Enabled ✓' : 'Cinema DSP Disabled');
+}
+
+// Voice Cloning Tab Switcher
+let settingsCloneTab = 'url';
+function switchSettingsCloneTab(tab) {
+    settingsCloneTab = tab;
+    const btnUrl = document.getElementById('settingsTabUrl');
+    const btnUpload = document.getElementById('settingsTabUpload');
+    const paneUrl = document.getElementById('settingsUrlPane');
+    const paneUpload = document.getElementById('settingsUploadPane');
+
+    if (tab === 'url') {
+        btnUrl.className = 'px-3 py-1.5 rounded bg-white text-black font-semibold';
+        btnUpload.className = 'px-3 py-1.5 rounded bg-transparent text-gray-400 hover:text-white font-semibold';
+        paneUrl.classList.remove('hidden');
+        paneUpload.classList.add('hidden');
+    } else {
+        btnUpload.className = 'px-3 py-1.5 rounded bg-white text-black font-semibold';
+        btnUrl.className = 'px-3 py-1.5 rounded bg-transparent text-gray-400 hover:text-white font-semibold';
+        paneUpload.classList.remove('hidden');
+        paneUrl.classList.add('hidden');
+    }
+}
+
+// Submit Clone Voice from Settings
+async function submitSettingsClone() {
+    const btn = document.getElementById('btnSettingsClone');
+    const name = document.getElementById('settingsCloneName').value.trim();
+    const role = document.getElementById('settingsCloneRole').value;
+    const setDefault = document.getElementById('settingsCloneSetDefault').checked;
+    const toEleven = document.getElementById('settingsCloneToEleven').checked;
+
+    const form = new FormData();
+    form.append('mode', settingsCloneTab);
+    form.append('name', name);
+    form.append('role', role);
+    form.append('setAsRoleDefault', setDefault ? 'true' : 'false');
+    form.append('cloneToElevenlabs', toEleven ? 'true' : 'false');
+
+    if (settingsCloneTab === 'url') {
+        const url = document.getElementById('settingsCloneUrl').value.trim();
+        if (!url) return alert('Enter a YouTube or audio URL');
+        form.append('url', url);
+        form.append('startSec', document.getElementById('settingsCloneStart').value || '0');
+        form.append('durationSec', document.getElementById('settingsCloneDuration').value || '40');
+    } else {
+        const file = document.getElementById('settingsCloneFile').files[0];
+        if (!file) return alert('Select an audio or video file');
+        form.append('audio_file', file);
+        form.append('startSec', '0');
+        form.append('durationSec', '40');
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = 'Extracting &amp; Cloning Voice... ⏳';
+    toast('Extracting voice from audio... Please wait.');
+
+    try {
+        const r = await fetch('/api/clone-voice', { method: 'POST', body: form });
+        const d = await r.json();
+        if (d.success) {
+            toast(d.message || 'Voice Cloned Successfully! 🎉');
+            document.getElementById('settingsCloneUrl').value = '';
+            document.getElementById('settingsCloneName').value = '';
+            load();
+        } else {
+            alert('Cloning failed: ' + (d.error || 'Unknown error'));
+        }
+    } catch (e) {
+        alert('Clone error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🎙️ Extract &amp; Clone Voice';
+    }
+}
+
+// Cloned Voices List Management
+async function loadClonedVoicesSettings() {
+    const listEl = document.getElementById('clonedVoicesList');
+    const badgeEl = document.getElementById('clonedCountBadge');
+    if (!listEl) return;
+
+    try {
+        const r = await fetch('/api/cloned-voices');
+        const d = await r.json();
+        const voices = d.cloned || [];
+        if (badgeEl) badgeEl.textContent = `${voices.length} voice${voices.length !== 1 ? 's' : ''}`;
+
+        if (!voices.length) {
+            listEl.innerHTML = `
+                <div class="text-center py-6 text-xs text-[#666] bg-[#000] rounded-lg border border-[#222]">
+                    No custom cloned voices yet. Clone one from YouTube or upload an audio file above!
+                </div>`;
+            return;
+        }
+
+        listEl.innerHTML = voices.map(v => {
+            const roleBadges = {
+                girl: '👧 Girl', boy: '👦 Boy', man: '👨 Man', woman: '👩 Woman',
+                old_man: '👴 Old Man', old_woman: '👵 Old Woman', villain: '🦹 Villain',
+                child: '👶 Child', narrator: '🎙️ Narrator'
+            };
+            const roleName = roleBadges[v.role] || v.role;
+            const elTag = v.elevenlabs_id ?
+                '<span class="text-[10px] bg-green-950 text-green-400 border border-green-800 px-1.5 py-0.5 rounded font-mono">ElevenLabs Cloned</span>' :
+                '<span class="text-[10px] bg-gray-900 text-gray-400 border border-gray-700 px-1.5 py-0.5 rounded font-mono">Local Sample</span>';
+
+            return `
+            <div class="p-3 bg-[#000] border border-[#222] rounded-lg flex items-center justify-between gap-3 hover:border-[#333]">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <span class="text-xl">🎙️</span>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-semibold text-white truncate">${v.name}</span>
+                            <span class="text-[10px] bg-[#1a1a1a] text-cyan-300 border border-[#333] px-1.5 py-0.5 rounded font-semibold">${roleName}</span>
+                            ${elTag}
+                        </div>
+                        <div class="text-[11px] text-[#666] truncate">${v.desc || 'Custom Voice'}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    ${v.sample_file ? `
+                    <button class="btn btn-ghost text-xs py-1 px-2.5" onclick="playClonedSample('${v.sample_file}')">
+                        🔊 Play Sample
+                    </button>` : ''}
+                    <button class="btn btn-danger text-xs py-1 px-2.5" onclick="deleteClonedVoice('${v.id}')">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+
+    } catch (e) {
+        listEl.innerHTML = '<div class="text-xs text-red-400 p-2">Failed to load cloned voices</div>';
+    }
+}
+
+let activeSampleAudio = null;
+function playClonedSample(filename) {
+    if (activeSampleAudio) {
+        activeSampleAudio.pause();
+        activeSampleAudio = null;
+    }
+    activeSampleAudio = new Audio('/cloned-voice-sample/' + filename);
+    activeSampleAudio.play().catch(e => alert('Audio playback error: ' + e.message));
+}
+
+async function deleteClonedVoice(voiceId) {
+    if (!confirm('Are you sure you want to delete this cloned voice?')) return;
+    try {
+        const r = await fetch('/api/cloned-voices/' + voiceId, { method: 'DELETE' });
+        const d = await r.json();
+        if (d.success) {
+            toast('Cloned voice deleted');
+            load();
+        } else alert('Delete failed: ' + (d.error || 'Error'));
+    } catch (e) {
+        alert('Delete error: ' + e.message);
+    }
+}
+
+// Character Role Voice Mappings
+const ALL_ROLES_CONFIG = [
+    { key: "girl", label: "👧 Girl (ក្រមុំ / តួស្រី)", defaultVoice: "heroine_female" },
+    { key: "boy", label: "👦 Boy (កំលោះ / តួប្រុស)", defaultVoice: "hero_male" },
+    { key: "man", label: "👨 Man (បុរស)", defaultVoice: "narrator_male" },
+    { key: "woman", label: "👩 Woman (ស្ត្រី)", defaultVoice: "soft_female" },
+    { key: "old_man", label: "👴 Old Man (លោកតា)", defaultVoice: "elder_male" },
+    { key: "old_woman", label: "👵 Old Woman (លោកយាយ)", defaultVoice: "elder_female" },
+    { key: "villain", label: "🦹 Villain (តួអាក្រក់)", defaultVoice: "villain_male" },
+    { key: "child", label: "👶 Child (ក្មេងតូច)", defaultVoice: "child" },
+    { key: "narrator", label: "🎙️ Narrator (អ្នកនិទាន)", defaultVoice: "narrator_female" }
+];
+
+async function loadRoleMappingsSettings(existingMap) {
+    const container = document.getElementById('roleMappingContainer');
+    if (!container) return;
+
+    try {
+        const r = await fetch('/api/voices');
+        const d = await r.json();
+        const allVoices = d.voices || [];
+
+        container.innerHTML = ALL_ROLES_CONFIG.map(role => {
+            const currentVoice = existingMap[role.key] || role.defaultVoice;
+            const options = allVoices.map(v =>
+                `<option value="${v.key}" ${v.key === currentVoice ? 'selected' : ''}>${v.name}</option>`
+            ).join('');
+
+            return `
+            <div class="flex items-center justify-between gap-3 p-2.5 bg-[#000] border border-[#222] rounded-lg">
+                <span class="text-xs font-semibold text-white">${role.label}</span>
+                <select class="input text-xs py-1.5 flex-1 max-w-[260px]" id="role_sel_${role.key}">
+                    ${options}
+                </select>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        console.error('Role mapping load error', e);
+    }
+}
+
+async function saveRoleVoiceMappings() {
+    const map = {};
+    ALL_ROLES_CONFIG.forEach(r => {
+        const el = document.getElementById('role_sel_' + r.key);
+        if (el) map[r.key] = el.value;
+    });
+
+    try {
+        const res = await fetch('/api/set-role-voice-map', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role_voice_map: map })
+        });
+        const d = await res.json();
+        if (d.success) {
+            toast('Character Voice Mappings Saved ✓');
+        } else alert('Save failed');
+    } catch (e) {
+        alert('Save error: ' + e.message);
+    }
+}
+
+load();
+
+// ── storage: uploads cleanup ──
+function fmtMB(mb) { return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB'; }
+async function loadUploadInfo() {
+    try {
+        const r = await (await fetch('/api/uploads/cleanup')).json();
+        document.getElementById('upKeepDays').value = String(Math.round(r.keep_days));
+        document.getElementById('upInfo').innerHTML =
+            `Uploads folder: <b class="text-white">${fmtMB(r.total_mb)}</b> in ${r.total_files} files · ` +
+            (r.free_files ? `<b class="text-white">${fmtMB(r.free_mb)}</b> (${r.free_files} files) can be freed now` : 'nothing to free right now') +
+            (r.in_use_files ? ` · ${r.in_use_files} kept because a job still needs them` : '');
+        document.getElementById('upCleanBtn').disabled = !r.free_files;
+        return r;
+    } catch (e) { document.getElementById('upInfo').textContent = 'Could not check the uploads folder.'; }
+}
+async function saveUploadKeepDays() {
+    const v = document.getElementById('upKeepDays').value;
+    await fetch('/api/uploads/cleanup', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({keep_days: +v})});
+}
+async function cleanUploadsNow() {
+    const info = await loadUploadInfo();
+    if (!info || !info.free_files) return;
+    if (!confirm(`Delete ${info.free_files} uploaded copies (${fmtMB(info.free_mb)}) that no job needs any more?
+
+Your finished videos are not touched. This can't be undone.`)) return;
+    const btn = document.getElementById('upCleanBtn');
+    btn.disabled = true; btn.textContent = 'Cleaning…';
+    const r = await (await fetch('/api/uploads/cleanup', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})).json();
+    btn.textContent = 'Free up space now';
+    alert(`Freed ${fmtMB(r.free_mb)} (${r.free_files} files).` + (r.errors ? ` ${r.errors} files were in use and skipped.` : ''));
+    loadUploadInfo();
+}
+loadUploadInfo();
+</script>
+</body>
+</html>

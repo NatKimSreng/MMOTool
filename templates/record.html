@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAI Dubber — Record My Voice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0e13; --panel:#16161d; --panel2:#1d1d26; --line:#2a2a36; --line2:#383847;
+  --text:#ececf1; --muted:#9a9aab; --faint:#6b6b7b;
+  --accent:#f5a524; --accent-ink:#1a1206; --accent-soft:rgba(245,165,36,.12);
+  --ok:#22c55e; --ok-soft:rgba(34,197,94,.12); --bad:#f05252; --bad-soft:rgba(240,82,82,.14);
+  --boy:#60a5fa; --girl:#f472b6; --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,'Kantumruy Pro',system-ui,sans-serif}
+.km{font-family:'Kantumruy Pro',Inter,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+header{position:sticky;top:0;z-index:20;background:rgba(14,14,19,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{max-width:1280px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;text-decoration:none;color:inherit}
+.brand .logo{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:13px;font-weight:800}
+nav{display:flex;gap:4px;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+nav a{padding:7px 12px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;white-space:nowrap}
+nav a:hover,nav a.on{color:var(--text);background:var(--panel2)}
+
+main{max-width:1280px;margin:0 auto;padding:20px 16px 80px;display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:960px){main{grid-template-columns:1fr}}
+.left{position:sticky;top:70px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:960px){.left{position:static}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:0 0 8px;font-weight:600}
+.sub{color:var(--muted);font-size:13.5px;margin:0}
+.input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;outline:none}
+.input:focus{border-color:var(--accent)}
+video{width:100%;border-radius:10px;background:#000;display:block;max-height:42vh}
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:5px 10px;border-radius:7px;color:var(--muted);font-size:13px;font-weight:500}
+.seg button.on{background:var(--line2);color:var(--text)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line2);background:var(--panel2);border-radius:10px;padding:8px 12px;font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;justify-content:center;text-decoration:none;color:inherit}
+.btn:hover{border-color:var(--muted)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.rec{background:var(--bad-soft);border-color:rgba(240,82,82,.5);color:#ff8a8a}
+.btn.rec.live{background:var(--bad);border-color:var(--bad);color:#fff;animation:pulse 1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(240,82,82,.25)}}
+.check{display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:8px}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.tips{margin:0;padding-left:18px;color:var(--muted);font-size:13px}
+.tips li{margin:3px 0}
+kbd{background:var(--panel2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:11.5px;color:var(--text)}
+.stat{display:flex;gap:14px;font-size:13px;color:var(--muted)}
+.stat b{color:var(--text)}
+.track{height:8px;border-radius:8px;background:var(--panel2);overflow:hidden;border:1px solid var(--line);margin-top:10px}
+.fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#ffcf6b);transition:width .5s}
+.status{margin-top:8px;font-size:13px;color:var(--muted);word-break:break-word}
+.err{color:var(--bad);font-size:13.5px}
+
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.lines{display:flex;flex-direction:column;gap:8px}
+.ln{background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer}
+.ln.active{border-color:var(--accent);background:#1a1912}
+.ln .top{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--faint)}
+.ln .num{font-weight:700;color:var(--muted)}
+.badge{font-size:11.5px;padding:1px 8px;border-radius:20px;font-weight:600;background:var(--line);color:var(--muted)}
+.badge.male{background:rgba(96,165,250,.14);color:var(--boy)}
+.badge.female{background:rgba(244,114,182,.14);color:var(--girl)}
+.badge.done{background:var(--ok-soft);color:var(--ok)}
+.badge.mood{background:var(--accent-soft);color:var(--accent)}
+.ln .src{color:var(--muted);font-size:13px;margin-top:6px}
+.ln .kh{font-family:'Kantumruy Pro',sans-serif;font-size:18px;line-height:1.6;margin-top:2px}
+.ln .acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.ln .len{font-size:12px;color:var(--faint);margin-left:auto}
+.ln .len.long{color:var(--accent)}
+.empty{color:var(--faint);padding:30px 10px;text-align:center}
+</style>
+<script src="/static/js/tasks.js"></script>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" href="/"><span class="logo">DAI</span><span>Dubber</span></a>
+    <nav>
+      <a href="/">Dub a video</a>
+      <a href="/record" class="on">Record my voice</a>
+      <a href="/studio">Studio editor</a>
+      <a href="/pro">All tools</a>
+      <a href="/settings">Settings</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="left">
+    <div class="card">
+      <h1>Record my voice</h1>
+      <p class="sub">Act the lines yourself. The app turns your recording into the character's voice — your timing and emotion, so it doesn't sound like AI. Record only the lines you want; the rest stay as they are.</p>
+      <div style="margin-top:12px">
+        <select id="jobSel" class="input" onchange="openJob(this.value)"><option value="">Choose a dubbed video…</option></select>
+      </div>
+      <div id="noJobs" class="status hidden">No projects yet. Dub a video on the <a href="/" style="color:var(--accent)">Dub a video</a> page first (made with this version), then come back here.</div>
+    </div>
+
+    <div class="card hidden" id="playerCard">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h2 style="margin:0">Scene</h2>
+        <div class="seg" id="hearSeg"><button type="button" data-h="orig" class="on">Original actor</button><button type="button" data-h="dub">Current dub</button></div>
+      </div>
+      <video id="vid" controls preload="metadata"></video>
+      <label class="check"><input type="checkbox" id="optScene" checked> Play the scene silently while I record (use headphones for best results)</label>
+      <ul class="tips" style="margin-top:10px">
+        <li>Listen to the actor first <kbd>Space</kbd>, then record <kbd>R</kbd> — copy their feeling and speed.</li>
+        <li>Talk like a real person: breathe, laugh, stress the important word.</li>
+        <li><kbd>↑</kbd> <kbd>↓</kbd> next line · <kbd>P</kbd> play my take · quiet room, mouth a hand away from the mic.</li>
+      </ul>
+    </div>
+
+    <div class="card hidden" id="buildCard">
+      <h2>Make the video</h2>
+      <div class="stat"><span>Recorded <b id="nRec">0</b> of <b id="nAll">0</b> lines</span></div>
+      <label class="check" style="display:block;margin-top:10px">My recordings become</label>
+      <select id="target" class="input" style="margin-top:6px">
+        <option value="auto">Each character's voice (girl / boy)</option>
+        <option value="original">My own real voice (no change)</option>
+      </select>
+      <div class="row" style="margin-top:12px">
+        <button type="button" class="btn primary" id="buildBtn" onclick="build()" style="flex:1">Make video with my voice</button>
+      </div>
+      <div id="buildProg" class="hidden"><div class="track"><div class="fill" id="bFill"></div></div><div class="status" id="bStatus"></div></div>
+      <div id="buildErr" class="err hidden" style="margin-top:8px"></div>
+      <div id="buildDone" class="hidden" style="margin-top:10px">
+        <div class="row">
+          <button type="button" class="btn" onclick="showResult()">▶ Watch</button>
+          <a class="btn" id="dlBtn" href="#">⬇ Download</a>
+          <button type="button" class="btn" onclick="openFolder()">📁 Folder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="toolbar hidden" id="toolbar">
+      <div class="seg" id="filterSeg">
+        <button type="button" data-f="all" class="on">All lines</button>
+        <button type="button" data-f="todo">Not recorded</button>
+        <button type="button" data-f="done">Recorded</button>
+      </div>
+      <span id="micState" class="status" style="margin:0"></span>
+    </div>
+    <div class="lines" id="lines"><div class="empty">Choose a dubbed video on the left.</div></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = t => { t = Math.max(0, t); const m = Math.floor(t / 60), s = (t % 60).toFixed(1).padStart(4, '0'); return `${m}:${s}`; };
+const S = { dir: '', job: null, segs: [], active: 0, filter: 'all', stream: null, rec: null, recIdx: null, chunks: [], stopAt: null, sceneStop: null, take: null, hear: 'orig' };
+
+async function loadJobs(){
+  const j = await (await fetch('/api/record/jobs')).json();
+  const sel = $('jobSel');
+  sel.innerHTML = '<option value="">Choose a dubbed video…</option>' + j.items.map(it =>
+    `<option value="${esc(it.dir)}">${esc(it.name)} — ${esc(it.date)} · ${it.lines} lines${it.recorded ? ` · ${it.recorded} recorded` : ''}</option>`).join('');
+  $('noJobs').classList.toggle('hidden', j.items.length > 0);
+  const want = new URLSearchParams(location.search).get('dir');
+  if (want && j.items.some(i => i.dir === want)) { sel.value = want; openJob(want); }
+  else if (j.items.length === 1) { sel.value = j.items[0].dir; openJob(j.items[0].dir); }
+}
+async function loadVoiceTargets(){
+  try {
+    const j = await (await fetch('/api/native-voices')).json();
+    $('target').innerHTML += j.voices.map(v => `<option value="${esc(v.key)}">Always: ${esc(v.name)}</option>`).join('');
+  } catch(e) {}
+}
+
+async function openJob(dir){
+  if (!dir) return;
+  const j = await (await fetch('/api/record/job?dir=' + encodeURIComponent(dir))).json();
+  if (!j.success) { $('lines').innerHTML = `<div class="empty">${esc(j.error)}</div>`; return; }
+  S.dir = dir; S.job = j; S.segs = j.segments; S.active = 0;
+  ['playerCard','buildCard','toolbar'].forEach(id => $(id).classList.remove('hidden'));
+  setHear(S.hear);
+  $('buildDone').classList.toggle('hidden', !/06_video_my_voice/.test(j.final_video || ''));
+  if (j.final_video) $('dlBtn').href = '/download-file?path=' + encodeURIComponent(j.final_video);
+  render(); counts();
+  try { history.replaceState(null, '', '/record?dir=' + encodeURIComponent(dir)); } catch(e) {}
+}
+function setHear(h){
+  S.hear = h;
+  document.querySelectorAll('#hearSeg button').forEach(b => b.classList.toggle('on', b.dataset.h === h));
+  const src = h === 'dub' && S.job.final_video ? S.job.final_video : S.job.video;
+  const t = $('vid').currentTime || 0;
+  $('vid').src = '/stream-video?path=' + encodeURIComponent(src);
+  $('vid').addEventListener('loadedmetadata', () => { $('vid').currentTime = t; }, {once: true});
+}
+document.querySelectorAll('#hearSeg button').forEach(b => b.onclick = () => setHear(b.dataset.h));
+document.querySelectorAll('#filterSeg button').forEach(b => b.onclick = () => {
+  S.filter = b.dataset.f; document.querySelectorAll('#filterSeg button').forEach(x => x.classList.toggle('on', x === b)); render();
+});
+
+function counts(){ $('nRec').textContent = S.segs.filter(s => s.recorded).length; $('nAll').textContent = S.segs.length; }
+
+function lineHtml(s, k){
+  const slot = s.end - s.start;
+  const g = s.gender === 'male' ? 'male' : s.gender === 'female' ? 'female' : '';
+  const isRec = S.recIdx === k;
+  let len = '';
+  if (s.recLen) { const long = s.recLen > slot * 1.25; len = `<span class="len ${long ? 'long' : ''}">your take ${s.recLen.toFixed(1)}s / space ${slot.toFixed(1)}s${long ? ' — a bit long' : ''}</span>`; }
+  else len = `<span class="len">space ${slot.toFixed(1)}s</span>`;
+  return `<div class="ln ${k === S.active ? 'active' : ''}" data-k="${k}" onclick="setActive(${k}, false)">
+    <div class="top"><span class="num">#${s.i}</span><span>${fmt(s.start)} → ${fmt(s.end)}</span>
+      ${g ? `<span class="badge ${g}">${g === 'male' ? 'Boy / man' : 'Girl / woman'}</span>` : ''}
+      ${s.emotion && s.emotion !== 'neutral' ? `<span class="badge mood">${esc(s.emotion)}</span>` : ''}
+      ${s.recorded ? '<span class="badge done">✓ my voice</span>' : ''}</div>
+    ${s.source ? `<div class="src">${esc(s.source)}</div>` : ''}
+    <div class="kh">${esc(s.text)}</div>
+    <div class="acts">
+      <button type="button" class="btn" onclick="event.stopPropagation();playScene(${k})">▶ Scene</button>
+      <button type="button" class="btn rec ${isRec ? 'live' : ''}" onclick="event.stopPropagation();toggleRec(${k})">${isRec ? '■ Stop' : (s.recorded ? '● Record again' : '● Record')}</button>
+      ${s.recorded ? `<button type="button" class="btn" onclick="event.stopPropagation();playTake(${k})">▶ My take</button>
+                      <button type="button" class="btn" title="Delete my take" onclick="event.stopPropagation();delTake(${k})">✕</button>` : ''}
+      ${len}
+    </div></div>`;
+}
+function render(){
+  const list = S.segs.map((s, k) => [s, k]).filter(([s]) => S.filter === 'all' || (S.filter === 'done') === !!s.recorded);
+  $('lines').innerHTML = list.length ? list.map(([s, k]) => lineHtml(s, k)).join('') : '<div class="empty">Nothing here.</div>';
+}
+function refreshLine(k){
+  const el = document.querySelector(`.ln[data-k="${k}"]`);
+  if (el) el.outerHTML = lineHtml(S.segs[k], k);
+}
+function setActive(k, scroll = true){
+  const old = S.active; S.active = Math.max(0, Math.min(S.segs.length - 1, k));
+  refreshLine(old); refreshLine(S.active);
+  if (scroll) document.querySelector(`.ln[data-k="${S.active}"]`)?.scrollIntoView({block: 'center', behavior: 'smooth'});
+}
+
+/* scene playback */
+function playScene(k, muted = false){
+  const s = S.segs[k], v = $('vid');
+  setActive(k, false);
+  clearTimeout(S.sceneStop);
+  v.muted = muted; v.currentTime = Math.max(0, s.start - 0.15); v.play();
+  S.sceneStop = setTimeout(() => v.pause(), (s.end - s.start + 0.5) * 1000);
+}
+function playTake(k){
+  if (S.take) S.take.pause();
+  S.take = new Audio(`/api/record/take?dir=${encodeURIComponent(S.dir)}&idx=${S.segs[k].i}&t=${Date.now()}`);
+  S.take.play();
+}
+async function delTake(k){
+  await fetch('/api/record/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({dir: S.dir, idx: S.segs[k].i})});
+  S.segs[k].recorded = false; S.segs[k].recLen = 0; refreshLine(k); counts();
+}
+
+/* recording */
+async function mic(){
+  if (S.stream) return S.stream;
+  try {
+    S.stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true}});
+    $('micState').textContent = '🎙 Microphone ready';
+    return S.stream;
+  } catch(e) {
+    $('micState').innerHTML = '<span class="err">Microphone blocked — allow it (Windows Settings → Privacy → Microphone) and try again.</span>';
+    throw e;
+  }
+}
+async function toggleRec(k){
+  if (S.rec && S.rec.state === 'recording') { S.rec.stop(); return; }
+  let stream; try { stream = await mic(); } catch(e) { return; }
+  setActive(k, false);
+  const s = S.segs[k];
+  S.chunks = []; S.recIdx = k;
+  const type = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
+  S.rec = new MediaRecorder(stream, type ? {mimeType: type} : undefined);
+  S.rec.ondataavailable = e => { if (e.data.size) S.chunks.push(e.data); };
+  S.rec.onstop = () => upload(k);
+  S.rec.start();
+  if ($('optScene').checked) playScene(k, true);
+  // safety stop: line length + a generous margin
+  clearTimeout(S.stopAt);
+  S.stopAt = setTimeout(() => { if (S.rec && S.rec.state === 'recording') S.rec.stop(); }, (s.end - s.start) * 1000 + 6000);
+  refreshLine(k);
+}
+async function upload(k){
+  clearTimeout(S.stopAt); $('vid').pause();
+  S.recIdx = null; refreshLine(k);
+  const fd = new FormData();
+  fd.append('dir', S.dir); fd.append('idx', S.segs[k].i);
+  fd.append('audio', new Blob(S.chunks, {type: 'audio/webm'}), 'take.webm');
+  const j = await (await fetch('/api/record/line', {method: 'POST', body: fd})).json().catch(() => ({success: false}));
+  if (j.success) { S.segs[k].recorded = true; S.segs[k].recLen = j.duration; counts(); }
+  else $('micState').innerHTML = `<span class="err">${esc(j.error || 'Upload failed')}</span>`;
+  refreshLine(k);
+}
+
+/* keyboard */
+document.addEventListener('keydown', e => {
+  if (!S.segs.length || ['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'r') { e.preventDefault(); toggleRec(S.active); }
+  else if (k === ' ') { e.preventDefault(); playScene(S.active); }
+  else if (k === 'p') { e.preventDefault(); if (S.segs[S.active].recorded) playTake(S.active); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); setActive(S.active + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(S.active - 1); }
+});
+
+/* build */
+async function build(){
+  $('buildErr').classList.add('hidden'); $('buildDone').classList.add('hidden');
+  const r = await (await fetch('/api/record/build', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({dir: S.dir, target: $('target').value})})).json();
+  if (!r.success) { $('buildErr').textContent = r.error; $('buildErr').classList.remove('hidden'); return; }
+  $('buildBtn').disabled = true; $('buildProg').classList.remove('hidden');
+  const t = setInterval(async () => {
+    const p = await (await fetch('/progress')).json().catch(() => null);
+    if (!p) return;
+    $('bFill').style.width = (p.percent || 0) + '%'; $('bStatus').textContent = p.status || '';
+    if (p.is_processing) return;
+    clearInterval(t); $('buildBtn').disabled = false;
+    if (String(p.status).startsWith('Error')) { $('buildErr').textContent = p.status.replace(/^Error:\s*/, ''); $('buildErr').classList.remove('hidden'); return; }
+    S.job.final_video = p.final_video; $('dlBtn').href = '/download-file?path=' + encodeURIComponent(p.final_video);
+    $('buildDone').classList.remove('hidden'); showResult();
+  }, 1000);
+}
+function showResult(){ setHear('dub'); $('vid').currentTime = 0; $('vid').muted = false; $('vid').play(); }
+async function openFolder(){
+  await fetch('/open-folder', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({path: S.dir})});
+}
+
+loadJobs(); loadVoiceTargets();
+</script>
+</body>
+</html>

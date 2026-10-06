@@ -1,0 +1,2839 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAI Dubber Pro — AI Video Translation &amp; Voice Cloning Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kantumruy+Pro:wght@400;500;600;700&display=swap');
+        :root {
+            --bg: #09090c;
+            --sidebar: #0e0e13;
+            --panel: #121217;
+            --card: #15151c;
+            --card-subtle: #1a1a23;
+            --border: #23232f;
+            --border-h: #3a3a4c;
+            --text: #f4f4f7;
+            --dim: #9292a0;
+            --muted: #5e5e6e;
+            --accent: #f59e0b;
+            --emerald: #10b981;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Kantumruy Pro', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .card-inner {
+            background: var(--card-subtle);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+        .btn {
+            border: none; cursor: pointer; border-radius: 8px;
+            font-size: 13px; font-weight: 600; padding: 9px 16px;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            text-decoration: none;
+        }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+        .btn-primary {
+            background: #ffffff;
+            color: #000000;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #e8e8ed;
+        }
+        .btn-accent {
+            background: #f59e0b;
+            color: #000000;
+            font-weight: 700;
+        }
+        .btn-accent:hover:not(:disabled) {
+            background: #fbbf24;
+        }
+        .btn-emerald {
+            background: #10b981;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .btn-emerald:hover:not(:disabled) {
+            background: #059669;
+        }
+        .btn-ghost {
+            background: transparent; color: var(--dim);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover:not(:disabled) { border-color: var(--border-h); color: var(--text); background: #1a1a24; }
+        .input {
+            width: 100%; background: #0c0c10; border: 1px solid var(--border);
+            border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px;
+            outline: none;
+        }
+        .input:focus { border-color: #6366f1; }
+        .label {
+            font-size: 11px; font-weight: 700; color: var(--dim);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 6px; display: block;
+        }
+        .badge-pro {
+            background: #f59e0b;
+            color: #000; font-size: 10px; font-weight: 800; padding: 2px 6px;
+            border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .badge-new {
+            background: #10b981;
+            color: #fff; font-size: 9px; font-weight: 700; padding: 2px 5px;
+            border-radius: 4px; text-transform: uppercase;
+        }
+        select.input option { background: #121217; color: #fff; }
+        select.input optgroup { background: #0c0c10; color: #f59e0b; font-weight: bold; }
+        .hidden { display: none !important; }
+
+        /* SIDEBAR NAVIGATION */
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #9292a0;
+            text-decoration: none;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+        }
+        .sidebar-link:hover {
+            background: #171720;
+            color: #ffffff;
+        }
+        .sidebar-link.active {
+            background: #1f1f2b;
+            color: #ffffff;
+            font-weight: 600;
+            border-left: 3px solid #f59e0b;
+        }
+        .sidebar-heading {
+            font-size: 10px;
+            font-weight: 700;
+            color: #555566;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 12px 12px 4px 12px;
+        }
+
+        /* WORKFLOW PRESET CARDS */
+        .preset-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--card-subtle);
+            cursor: pointer;
+            padding: 13px;
+            position: relative;
+        }
+        .preset-card:hover {
+            border-color: #4a4a5e;
+        }
+        .preset-card.active {
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.08);
+        }
+
+        /* MEDIA DROPZONE */
+        .dropzone-box {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            background: #111117;
+        }
+        .dropzone-box:hover, .dropzone-box.dragover {
+            border-color: #f59e0b;
+            background: #161620;
+        }
+
+        /* SUBTITLE MONITOR */
+        .cinema-screen {
+            position: relative;
+            background: #08080c;
+            border: 1px solid #282836;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 16 / 9;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        /* RANGE SLIDERS */
+        input[type=range] {
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #252533;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #f59e0b;
+            cursor: pointer;
+        }
+
+        .step-num {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #252533;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .step-num.active {
+            background: #f59e0b;
+            color: #000;
+        }
+
+        /* STEPPER */
+        .stepper-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            color: var(--dim);
+        }
+        .stepper-item.done { color: #10b981; }
+        .stepper-item.running { color: #f59e0b; font-weight: 600; }
+        .stepper-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #333342;
+        }
+        .stepper-item.done .stepper-dot { background: #10b981; }
+        .stepper-item.running .stepper-dot { background: #f59e0b; }
+    </style>
+<script src="/static/js/tasks.js"></script>
+</head>
+<body>
+
+<div class="flex min-h-screen">
+
+    <!-- ================================================================ -->
+    <!-- LEFT SIDEBAR                                                     -->
+    <!-- ================================================================ -->
+    <aside class="w-64 bg-[#0e0e13] border-r border-[#22222e] flex flex-col justify-between shrink-0 sticky top-0 h-screen overflow-y-auto">
+        <div>
+            <!-- Brand / Logo -->
+            <div class="p-4 border-b border-[#1f1f2b] flex items-center justify-between">
+                <a href="/" class="flex items-center gap-2.5 no-underline">
+                    <div class="w-7 h-7 rounded-md bg-amber-500 text-black flex items-center justify-center text-xs font-black">
+                        DP
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold text-white tracking-tight">DAI Dubber Pro</span>
+                            <span class="badge-pro text-[9px] py-0 px-1">PRO</span>
+                        </div>
+                        <span class="text-[10px] text-[#777] block -mt-0.5">Khmer Video Studio</span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="p-3 space-y-1">
+                <div class="sidebar-heading">AI Video Tools</div>
+
+                <button class="sidebar-link active" data-tab="auto" onclick="switchTab('auto')">
+                    <span class="text-base">⚡</span>
+                    <span>1-Click AI Dubbing</span>
+                </button>
+
+                <button class="sidebar-link" data-tab="pipe" onclick="switchTab('pipe')">
+                    <span class="text-base">🎛️</span>
+                    <span>Advanced Dubbing</span>
+                </button>
+
+                <button class="sidebar-link" data-tab="srt" onclick="switchTab('srt')">
+                    <span class="text-base">🎙️</span>
+                    <span>Khmer STT (Whisper)</span>
+                </button>
+
+                <button class="sidebar-link" data-tab="tts" onclick="switchTab('tts')">
+                    <span class="text-base">🗣️</span>
+                    <span>SRT → Speech (TTS)</span>
+                </button>
+
+                <button class="sidebar-link" data-tab="cut" onclick="switchTab('cut')">
+                    <span class="text-base">✂️</span>
+                    <span>Video Splitter</span>
+                </button>
+
+                <button class="sidebar-link" data-tab="batch" onclick="switchTab('batch')">
+                    <span class="text-base">🔀</span>
+                    <span>Merge Video Clips</span>
+                </button>
+
+                <button class="sidebar-link" data-tab="yt" onclick="switchTab('yt')">
+                    <span class="text-base">📥</span>
+                    <span>Downloader</span>
+                </button>
+
+                <div class="sidebar-heading mt-4">Studio &amp; Settings</div>
+
+                <a href="/studio" class="sidebar-link">
+                    <span class="text-base">🎬</span>
+                    <span>Studio Timeline</span>
+                </a>
+
+                <a href="/settings#voices" class="sidebar-link">
+                    <span class="text-base">🎙️</span>
+                    <span class="flex-1">Voice Cloning Studio</span>
+                    <span class="badge-new text-[9px]">NEW</span>
+                </a>
+
+                <a href="/settings" class="sidebar-link">
+                    <span class="text-base">⚙️</span>
+                    <span>Settings &amp; API Keys</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Footer Status -->
+        <div class="p-3 border-t border-[#1f1f2b] text-[11px] text-[#777] bg-[#0b0b0f]">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[#999] font-medium">Status</span>
+                <span class="text-emerald-400 font-semibold">● Ready</span>
+            </div>
+            <div class="text-[10px] text-[#555] truncate">Edge TTS · Whisper · FFmpeg</div>
+        </div>
+    </aside>
+
+    <!-- ================================================================ -->
+    <!-- MAIN CONTENT AREA                                                -->
+    <!-- ================================================================ -->
+    <div class="flex-1 flex flex-col min-w-0 bg-[#09090c]">
+
+        <!-- Top Header Bar -->
+        <header class="border-b border-[#1f1f2b] bg-[#0c0c10] px-6 py-3 flex items-center justify-between sticky top-0 z-20">
+            <div>
+                <h1 id="pageTitle" class="text-sm font-bold text-white tracking-tight">1-Click AI Video Dubbing &amp; Translation</h1>
+                <p id="pageSubtitle" class="text-[11px] text-[#777]">Automated Speech-to-Text, Natural Khmer Translation, Character Voice Cloning &amp; BGM Auto-Ducking</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/settings#voices" class="btn btn-ghost text-xs py-1.5 px-3">
+                    <span>🎙️ Clone Voice</span>
+                </a>
+                <a href="/studio" class="btn btn-primary text-xs py-1.5 px-3">
+                    <span>🎬 Studio Editor</span>
+                </a>
+            </div>
+        </header>
+
+        <main class="max-w-4xl w-full mx-auto px-6 py-6">
+
+            <!-- GLOBAL PROGRESS TRACKER -->
+            <div id="progressBox" class="card p-5 mb-6 border-amber-500/50 bg-[#121218] hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+                        <span id="progressTitle" class="text-xs font-bold text-white uppercase tracking-wider">AI Dubbing Pipeline In Progress</span>
+                    </div>
+                    <span id="progressPct" class="font-mono text-sm font-bold text-amber-400">0%</span>
+                </div>
+
+                <!-- 5-Step Progress Indicators -->
+                <div id="progressSteps" class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4 pt-1">
+                    <div class="stepper-item" id="stepIndicator1">
+                        <div class="stepper-dot"></div>
+                        <span>1. Transcribe</span>
+                    </div>
+                    <div class="stepper-item" id="stepIndicator2">
+                        <div class="stepper-dot"></div>
+                        <span>2. AI Translate</span>
+                    </div>
+                    <div class="stepper-item" id="stepIndicator3">
+                        <div class="stepper-dot"></div>
+                        <span>3. Synthesize</span>
+                    </div>
+                    <div class="stepper-item" id="stepIndicator4">
+                        <div class="stepper-dot"></div>
+                        <span>4. Duck &amp; Mix</span>
+                    </div>
+                    <div class="stepper-item" id="stepIndicator5">
+                        <div class="stepper-dot"></div>
+                        <span>5. Burn Subtitles</span>
+                    </div>
+                </div>
+
+                <div class="h-2 bg-[#252533] rounded-full overflow-hidden mb-3">
+                    <div id="progressBar" class="h-full bg-amber-400 rounded-full w-0"></div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <span id="progressStatus" class="text-white font-medium">Initializing AI engine...</span>
+                    <span id="progressHint" class="text-[#777] text-[11px]">Processing locally &amp; in cloud</span>
+                </div>
+                <p id="progressResult" class="text-xs text-emerald-400 mt-3 pt-2 border-t border-[#23232f] hidden font-mono break-all"></p>
+                <button id="progressOpenFolder" class="btn btn-ghost text-xs py-1.5 px-3 mt-2 text-white hidden">📁 Open in Explorer</button>
+            </div>
+
+            <!-- RESULT SHOWCASE CARD -->
+            <div id="resultCard" class="card p-6 mb-6 border-emerald-500/40 bg-[#101612] hidden">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#1f2f24]">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                            ✓
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-white">Video Dubbed Successfully!</h3>
+                            <p class="text-xs text-[#8ca896]">Ready to stream or download.</p>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('resultCard').classList.add('hidden')" class="btn btn-ghost text-xs py-1 px-2.5 text-[#888]">
+                        ✕ Close
+                    </button>
+                </div>
+
+                <!-- Stream Player -->
+                <div class="mb-4 bg-black rounded-lg overflow-hidden border border-[#233527]">
+                    <video id="resultPlayer" controls class="w-full max-h-[400px] bg-black block mx-auto" preload="metadata"></video>
+                </div>
+
+                <!-- Action Hub -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 pt-1">
+                    <a id="btnDlVideo" href="#" class="btn btn-emerald text-xs py-2">
+                        <span>🎬 Download Video (.mp4)</span>
+                    </a>
+                    <a id="btnDlSrt" href="#" class="btn btn-ghost text-xs py-2 text-white">
+                        <span>📄 Download Khmer SRT</span>
+                    </a>
+                    <a id="btnDlAudio" href="#" class="btn btn-ghost text-xs py-2 text-white">
+                        <span>🎵 Download Audio (.mp3)</span>
+                    </a>
+                    <button id="btnOpenFolder" onclick="openOutputFolder()" class="btn btn-ghost text-xs py-2 text-white">
+                        <span>📁 Open in Explorer</span>
+                    </button>
+                </div>
+                <div class="mt-3 pt-3 border-t border-[#18281d] flex items-center justify-between">
+                    <a href="/studio" class="text-xs text-amber-400 hover:underline font-semibold no-underline">
+                        ✂️ Open in Studio Timeline Editor →
+                    </a>
+                    <button onclick="resetAutoForm()" class="text-xs text-[#888] hover:text-white underline bg-transparent border-none cursor-pointer">
+                        Translate another video
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- TAB 1: 1-CLICK AI DUBBING STUDIO                                 -->
+            <!-- ================================================================ -->
+            <div id="tab-auto" class="space-y-6">
+
+                <div class="card p-6">
+
+                    <!-- STEP 1: VIDEO SOURCE -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="step-num active">1</span>
+                                <span class="text-xs font-bold text-white uppercase tracking-wider">Video Source</span>
+                            </div>
+
+                            <div class="inline-flex rounded-lg bg-[#0c0c10] border border-[#23232f] p-0.5">
+                                <button type="button" id="srcModeFile" onclick="setSourceMode('file')" class="text-xs font-semibold px-3 py-1 rounded-md bg-[#23232f] text-white">
+                                    📁 Upload File
+                                </button>
+                                <button type="button" id="srcModeUrl" onclick="setSourceMode('url')" class="text-xs font-semibold px-3 py-1 rounded-md text-[#888] hover:text-white">
+                                    🔗 YouTube / Web URL
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dropzone File Upload -->
+                        <div id="sourceFileBlock">
+                            <input type="file" id="autoVideo" accept="video/*,audio/*" multiple class="hidden" onchange="onAutoFilesSelected(this.files)">
+                            <input type="file" id="autoAddMoreInput" accept="video/*,audio/*" multiple class="hidden" onchange="onAutoAddMoreFiles(this.files)">
+
+                            <div class="dropzone-box p-5 text-center cursor-pointer" id="dropzone" onclick="onDropzoneClicked(event)">
+                                <div id="dropzoneEmpty">
+                                    <div class="text-3xl mb-2">📤</div>
+                                    <p class="text-xs font-semibold text-white mb-0.5">Click to choose video (or multiple clips to auto-merge) or drag &amp; drop</p>
+                                    <p class="text-[11px] text-[#777]">Supports MP4, MOV, MKV, WebM, MP3 · Auto-merges multiple drama recap episodes in 1 click</p>
+                                </div>
+
+                                <!-- Single Video Loaded View -->
+                                <div id="dropzoneLoaded" class="hidden text-left" onclick="event.stopPropagation()">
+                                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#23232f]">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xl">🎬</span>
+                                            <div>
+                                                <p id="autoFileName" class="text-xs font-bold text-white truncate max-w-sm"></p>
+                                                <p class="text-[10px] text-amber-400 font-mono" id="autoFileSize"></p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" onclick="document.getElementById('autoAddMoreInput').click()" class="btn btn-ghost text-xs py-1 px-2.5 text-amber-400 border border-amber-500/30">
+                                                + Add Clips to Merge
+                                            </button>
+                                            <button type="button" onclick="cancelAutoFile()" class="btn btn-ghost text-xs py-1 px-2 text-[#aaa]">
+                                                Change
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <video id="sourcePreviewPlayer" controls class="w-full max-h-52 rounded bg-black border border-[#252533] block mx-auto"></video>
+                                </div>
+
+                                <!-- Multiple Clips Auto-Merge Loaded View -->
+                                <div id="dropzoneMultiLoaded" class="hidden text-left" onclick="event.stopPropagation()">
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2.5 mb-2.5 border-b border-[#23232f] gap-2">
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="badge-pro text-[9px] py-0.5 px-1.5">🔀 AUTO-MERGE ACTIVE</span>
+                                                <span id="multiClipSummary" class="text-xs font-bold text-white"></span>
+                                            </div>
+                                            <p class="text-[11px] text-[#888] mt-0.5">Clips will be automatically merged into 1 continuous video in the order below before AI dubbing &amp; translation.</p>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <button type="button" onclick="document.getElementById('autoAddMoreInput').click()" class="btn btn-ghost text-xs py-1 px-2.5 text-amber-400 border border-amber-500/30">
+                                                + Add Clips
+                                            </button>
+                                            <button type="button" onclick="cancelAutoFile()" class="btn btn-ghost text-xs py-1 px-2.5 text-[#aaa]">
+                                                Clear All
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Draggable / Re-orderable Clips List -->
+                                    <div id="multiClipList" class="space-y-1.5 max-h-60 overflow-y-auto pr-1"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- YouTube / Web Link Input -->
+                        <div id="sourceUrlBlock" class="hidden">
+                            <div class="card-inner p-3.5">
+                                <label class="label">Paste Video Link (YouTube, TikTok, Facebook, Douyin)</label>
+                                <input type="url" id="autoUrlInput" placeholder="https://www.youtube.com/watch?v=..." class="input font-mono text-xs">
+                                <p class="text-[11px] text-[#777] mt-1.5">
+                                    yt-dlp will automatically download the video and start the AI dubbing pipeline directly.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="label">Project / Episode Name</label>
+                            <input type="text" id="autoJobName" class="input" placeholder="e.g. Recap_Hero_Ep01">
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: 1-CLICK PRESETS -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="step-num active">2</span>
+                                <span class="text-xs font-bold text-white uppercase tracking-wider">1-Click Workflow Presets</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                            <div class="preset-card active" id="preset-recap" onclick="applyPreset('recap')">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-lg">🎬</span>
+                                    <span class="badge-pro text-[9px]">RECAP</span>
+                                </div>
+                                <h4 class="text-xs font-bold text-white mb-0.5">Movie Recap</h4>
+                                <p class="text-[11px] text-[#888] leading-tight mb-1">សម្រាយរឿង / និទានរឿង</p>
+                                <p class="text-[10px] text-[#666]">Fast narration, smart BGM ducking (20%), yellow subs.</p>
+                            </div>
+
+                            <div class="preset-card" id="preset-dialogue" onclick="applyPreset('dialogue')">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-lg">💬</span>
+                                    <span class="badge-new text-[9px]">MULTI-VOICE</span>
+                                </div>
+                                <h4 class="text-xs font-bold text-white mb-0.5">Drama Dialogue</h4>
+                                <p class="text-[11px] text-[#888] leading-tight mb-1">រឿងភាគ / សន្ទនាតួ</p>
+                                <p class="text-[10px] text-[#666]">Auto-casts Girl, Boy, Man, Woman voices per line.</p>
+                            </div>
+
+                            <div class="preset-card" id="preset-shorts" onclick="applyPreset('shorts')">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-lg">📱</span>
+                                    <span class="text-[9px] font-bold text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded">SHORTS</span>
+                                </div>
+                                <h4 class="text-xs font-bold text-white mb-0.5">TikTok / Shorts</h4>
+                                <p class="text-[11px] text-[#888] leading-tight mb-1">វីដេអូខ្លី</p>
+                                <p class="text-[10px] text-[#666]">Punchy voice, high-contrast cyan subs with dark box.</p>
+                            </div>
+
+                            <div class="preset-card" id="preset-voiceover" onclick="applyPreset('voiceover')">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-lg">🎙️</span>
+                                    <span class="text-[9px] font-bold text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded">CLEAN</span>
+                                </div>
+                                <h4 class="text-xs font-bold text-white mb-0.5">Clean Voiceover</h4>
+                                <p class="text-[11px] text-[#888] leading-tight mb-1">សំឡេងសុទ្ធ</p>
+                                <p class="text-[10px] text-[#666]">Mutes original BGM, speech only.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: CHARACTER VOICES & TRANSLATION -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="step-num active">3</span>
+                                <span class="text-xs font-bold text-white uppercase tracking-wider">Character Cast &amp; Translation</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button type="button" class="text-[11px] text-amber-400 hover:underline font-semibold bg-transparent border-0 cursor-pointer flex items-center gap-1" onclick="openGlossaryModal()">
+                                    📚 Glossary &amp; Names (<span id="glossaryCountBadge">3</span>) →
+                                </button>
+                                <a href="/settings#voices" class="text-[11px] text-[#aaa] hover:text-white hover:underline font-semibold no-underline">
+                                    + Clone Voice →
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Multi-Character Voice Auto-Detection Card -->
+                        <div class="card-inner p-3.5 mb-3.5">
+                            <label class="flex items-start gap-2.5 cursor-pointer">
+                                <input type="checkbox" id="autoDetectVoice" checked class="mt-0.5 accent-amber-400 w-4 h-4 cursor-pointer">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-bold text-white">👥 Multi-Character Voice Auto-Detection</span>
+                                        <span class="badge-pro text-[9px] py-0 px-1">PRO</span>
+                                    </div>
+                                    <p class="text-[11px] text-[#888] mt-0.5">
+                                        AI analyzes dialogue and casts matching voices per character:
+                                    </p>
+                                </div>
+                            </label>
+
+                            <!-- Role Chips -->
+                            <div class="flex flex-wrap gap-1.5 mt-2.5 pt-2 border-t border-[#23232f]">
+                                <span class="text-[10px] bg-[#1d1d27] text-[#bbb] px-2 py-0.5 rounded border border-[#2b2b3b]">👧 Girl</span>
+                                <span class="text-[10px] bg-[#1d1d27] text-[#bbb] px-2 py-0.5 rounded border border-[#2b2b3b]">👦 Boy</span>
+                                <span class="text-[10px] bg-[#1d1d27] text-[#bbb] px-2 py-0.5 rounded border border-[#2b2b3b]">👨 Hero / Man</span>
+                                <span class="text-[10px] bg-[#1d1d27] text-[#bbb] px-2 py-0.5 rounded border border-[#2b2b3b]">👩 Heroine / Woman</span>
+                                <span class="text-[10px] bg-[#1d1d27] text-[#bbb] px-2 py-0.5 rounded border border-[#2b2b3b]">👴 Old Man</span>
+                                <span class="text-[10px] bg-[#1d1d27] text-[#bbb] px-2 py-0.5 rounded border border-[#2b2b3b]">👵 Old Woman</span>
+                                <span class="text-[10px] bg-[#1d1d27] text-[#bbb] px-2 py-0.5 rounded border border-[#2b2b3b]">🦹 Villain</span>
+                            </div>
+
+                            <!-- Script Review Checkpoint -->
+                            <div class="mt-2.5 pt-2 border-t border-[#23232f]">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="autoReviewScript" class="accent-amber-400 w-4 h-4 cursor-pointer">
+                                    <span class="text-xs font-semibold text-white">⏸️ Review &amp; Edit Script before Dubbing (Pause to check translated Khmer lines &amp; voice cast)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Lead Voice Profile Dropdown -->
+                        <div class="mb-3.5">
+                            <label class="label">Lead Narrator / Default Voice Profile</label>
+                            <div class="flex gap-2">
+                                <select id="autoVoice" class="input flex-1 font-medium">
+                                    <option value="recap_fast" selected>⚡ សម្រាយរហ័ស (Fast Recap Narrator) — Engaging &amp; Energetic</option>
+                                    <option value="narrator_female">🎙️ និទានស្រី (Female Narrator) — Warm &amp; Clear</option>
+                                    <option value="narrator_male">🎙️ និទានប្រុស (Male Narrator) — Confident &amp; Deep</option>
+                                    <option value="hero_male">👦 តួឯកប្រុស / កំលោះ (Hero / Young Male)</option>
+                                    <option value="heroine_female">👧 តួឯកស្រី / ក្រមុំ (Heroine / Young Female)</option>
+                                    <option value="elder_male">👴 មនុស្សចាស់ / តា (Elder Male / Master)</option>
+                                    <option value="elder_female">👵 យាយ / ចាស់ទុំ (Elder Female / Grandma)</option>
+                                    <option value="villain_male">🦹 តួអាក្រក់ / ម៉ឺងម៉ាត់ (Villain / Boss)</option>
+                                    <option value="child">👶 ក្មេងតូច (Child / Kid)</option>
+                                    <option value="soft_female">🌸 ស្រីស្រទន់ / កម្សត់ (Soft &amp; Emotional)</option>
+                                    <option value="female">Sreymom (Standard Female)</option>
+                                    <option value="male">Piseth (Standard Male)</option>
+                                </select>
+                                <button type="button" class="btn btn-ghost text-xs px-3" onclick="previewCurrentVoice('autoVoice')" title="Audition Voice Sample">
+                                    🔊 Audition
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Language & Engine -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="label">Original Spoken Language</label>
+                                <select id="autoLang" class="input">
+                                    <option value="auto" selected>🌐 Auto Detect Spoken</option>
+                                    <option value="zh">Chinese 中文 (Dramas / ShortMax)</option>
+                                    <option value="en">English (Movies / Tech)</option>
+                                    <option value="th">Thai ภาษาไทย</option>
+                                    <option value="vi">Vietnamese Tiếng Việt</option>
+                                    <option value="ja">Japanese 日本語</option>
+                                    <option value="ko">Korean 한국어</option>
+                                    <option value="km">Khmer (Already Spoken Khmer)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="label">AI Translation Engine</label>
+                                <select id="autoEngine" class="input">
+                                    <option value="auto" selected>⚡ Auto Smart (Gemini → OpenAI → Groq)</option>
+                                    <option value="gemini">🌟 Google Gemini AI (Best for Khmer)</option>
+                                    <option value="openai">🧠 OpenAI GPT-4o-mini</option>
+                                    <option value="groq">🚀 Groq Llama 3.3 70B (Fastest)</option>
+                                    <option value="google">🌐 Google Translate (Free Fallback)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="label">Translation Style</label>
+                                <select id="autoStyle" class="input">
+                                    <option value="recap" selected>🎬 Movie Recap / Storytelling</option>
+                                    <option value="dialogue">💬 Natural Drama Dialogue</option>
+                                    <option value="general">🌐 General Subtitles</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: SOUND MIX & SUBTITLE STYLING -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="step-num active">4</span>
+                                <span class="text-xs font-bold text-white uppercase tracking-wider">Audio Ducking, Subtitles &amp; Watermark Logo</span>
+                            </div>
+                        </div>
+
+                        <!-- Real-time Subtitle Cinema Preview Screen -->
+                        <div class="mb-4">
+                            <div class="cinema-screen" id="cinemaScreen">
+                                <!-- Watermark Logo Live Overlay -->
+                                <div id="cinemaLogoContainer" class="absolute pointer-events-none transition-all hidden" style="top: 14px; right: 14px; z-index: 15;">
+                                    <img id="cinemaLogoImg" src="" alt="Logo" style="max-width: 90px; max-height: 48px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.85));">
+                                </div>
+
+                                <div id="subPreviewContainer" class="relative z-10 text-center px-3 py-1.5 rounded" style="max-width: 90%;">
+                                    <p id="subPreviewText" class="font-bold tracking-wide" style="color: #FFEB3B; font-size: 22px; text-shadow: 0 2px 6px rgba(0,0,0,0.9);">
+                                        « ខ្ញុំនឹងមិនបោះបង់ចោលក្តីសង្ឃឹមឡើយ! »
+                                    </p>
+                                    <p id="subPreviewBilingual" class="text-xs text-white/80 font-mono mt-0.5 hidden">
+                                        (I will never give up hope!)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Canvas Ratio & Subtitle Styling Controls -->
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-4">
+                            <div>
+                                <label class="label">Video Ratio / Canvas</label>
+                                <select id="autoAspectRatio" class="input" onchange="onAspectRatioChange()">
+                                    <option value="original" selected>📺 16:9 Original</option>
+                                    <option value="9:16">📱 9:16 Shorts / TikTok</option>
+                                    <option value="1:1">🟦 1:1 Square Feed</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="label">Subtitle Color</label>
+                                <select id="autoSubColor" class="input" onchange="updateLiveSubPreview()">
+                                    <option value="yellow" selected>Cinema Yellow (#FFEB3B)</option>
+                                    <option value="white">Clean White (#FFFFFF)</option>
+                                    <option value="cyan">Neon Cyan (#00E5FF)</option>
+                                    <option value="green">Mint Green (#10B981)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="label">Subtitle Font Size</label>
+                                <select id="autoSubSize" class="input" onchange="updateLiveSubPreview()">
+                                    <option value="18">Small (18px)</option>
+                                    <option value="20">Normal (20px)</option>
+                                    <option value="22" selected>Medium (22px)</option>
+                                    <option value="26">Large (26px)</option>
+                                    <option value="30">Extra Large (30px)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="label">Speech Pacing</label>
+                                <select id="autoSpeechRate" class="input">
+                                    <option value="-15%">−15% (Slower / Clear)</option>
+                                    <option value="-8%">−8% (Natural story)</option>
+                                    <option value="-5%" selected>−5% (Recap pace)</option>
+                                    <option value="+0%">Normal (0%)</option>
+                                    <option value="+10%">+10% (Fast)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="label">Dubbing Audio Mode</label>
+                                <select id="autoDubMode" class="input" onchange="onDubModeChange()">
+                                    <option value="duck" selected>🎵 Smart BGM Ducking</option>
+                                    <option value="isolate_bgm">✨ AI Vocal Remover (Keep BGM/SFX)</option>
+                                    <option value="mute">🔇 Voice Only (Mute BGM)</option>
+                                    <option value="mix">🎚️ Custom Mix</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Audio Sliders -->
+                        <div class="card-inner p-3.5 mb-3.5 space-y-3">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs font-semibold text-white">Background Music (BGM) Ducking Level</label>
+                                    <span id="bgmVolumeDisplay" class="font-mono text-xs font-bold text-amber-400">25% (Lowers BGM during speech)</span>
+                                </div>
+                                <input type="range" id="bgmVolumeSlider" min="0" max="60" value="25" class="w-full" oninput="updateBgmSlider(this.value)">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs font-semibold text-white">Khmer Dubbed Voice Volume Boost</label>
+                                    <span id="voiceVolumeDisplay" class="font-mono text-xs font-bold text-emerald-400">100% (Balanced)</span>
+                                </div>
+                                <input type="range" id="voiceVolumeSlider" min="50" max="150" value="100" class="w-full" oninput="updateVoiceSlider(this.value)">
+                            </div>
+                        </div>
+
+                        <!-- Subtitle Checkboxes -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <label class="flex items-center gap-2 text-xs text-[#ccc] cursor-pointer bg-[#101017] p-2 rounded border border-[#23232f]">
+                                <input type="checkbox" id="autoBurnSubs" checked class="accent-amber-400 w-4 h-4 cursor-pointer" onchange="updateLiveSubPreview()">
+                                <span>Burn Subtitles onto Video</span>
+                            </label>
+
+                            <label class="flex items-center gap-2 text-xs text-[#ccc] cursor-pointer bg-[#101017] p-2 rounded border border-[#23232f]">
+                                <input type="checkbox" id="autoSubBox" class="accent-amber-400 w-4 h-4 cursor-pointer" onchange="updateLiveSubPreview()">
+                                <span>Semi-transparent Dark Box</span>
+                            </label>
+
+                            <label class="flex items-center gap-2 text-xs text-[#ccc] cursor-pointer bg-[#101017] p-2 rounded border border-[#23232f]">
+                                <input type="checkbox" id="autoBilingual" class="accent-amber-400 w-4 h-4 cursor-pointer" onchange="updateLiveSubPreview()">
+                                <span>Bilingual (Khmer + Original)</span>
+                            </label>
+                        </div>
+
+                        <!-- WATERMARK / CHANNEL LOGO OVERLAY CARD -->
+                        <div class="card-inner p-3.5 mt-3 border border-[#232332]">
+                            <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-[#23232f]">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="autoLogoEnabled" class="accent-amber-400 w-4 h-4 cursor-pointer" onchange="toggleLogoSection(); updateLiveLogoPreview();">
+                                    <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                                        🏷️ Watermark / Channel Logo Overlay
+                                        <span class="badge-pro text-[9px] py-0 px-1">PRO</span>
+                                    </span>
+                                </label>
+                                <span class="text-[11px] text-[#777]">Brand your video automatically</span>
+                            </div>
+
+                            <div id="logoControlsWrapper" class="space-y-3">
+                                <input type="file" id="autoLogoFile" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="onAutoLogoSelected(this)">
+
+                                <!-- Logo Upload & Thumbnail Bar -->
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-2.5 rounded-lg bg-[#0e0e14] border border-[#20202c]">
+                                    <div class="flex items-center gap-3">
+                                        <div id="logoThumbBox" class="w-12 h-12 rounded-lg bg-[#181822] border border-[#2b2b3c] flex items-center justify-center overflow-hidden shrink-0">
+                                            <img id="logoThumbImg" src="" alt="Logo" class="max-w-full max-h-full object-contain hidden">
+                                            <span id="logoThumbPlaceholder" class="text-[10px] text-[#666]">No Logo</span>
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <p id="logoStatusText" class="text-xs font-semibold text-white">No custom logo selected</p>
+                                                <span id="savedLogoBadge" class="hidden text-[9px] bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800">Saved Channel Logo</span>
+                                            </div>
+                                            <p class="text-[11px] text-[#777] mt-0.5">Upload a transparent PNG, JPG, or WEBP logo (e.g. channel watermark)</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <button type="button" onclick="document.getElementById('autoLogoFile').click()" class="btn btn-ghost text-xs py-1.5 px-3 text-amber-400 border border-amber-500/30">
+                                            📁 Choose Logo
+                                        </button>
+                                        <button type="button" id="btnRemoveLogo" onclick="removeLogo()" class="btn btn-ghost text-xs py-1.5 px-2 text-[#888] hover:text-white hidden" title="Remove logo">
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Logo Controls: Position, Size, Opacity -->
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="label">Logo Position</label>
+                                        <select id="autoLogoPos" class="input" onchange="updateLiveLogoPreview()">
+                                            <option value="top-right" selected>Top-Right (Standard)</option>
+                                            <option value="top-left">Top-Left</option>
+                                            <option value="bottom-right">Bottom-Right</option>
+                                            <option value="bottom-left">Bottom-Left</option>
+                                            <option value="center">Center (Watermark)</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="label">Logo Size</label>
+                                        <select id="autoLogoSize" class="input" onchange="updateLiveLogoPreview()">
+                                            <option value="small">Small (120px)</option>
+                                            <option value="medium" selected>Medium (160px)</option>
+                                            <option value="large">Large (220px)</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="label" style="margin-bottom: 0;">Opacity</label>
+                                            <span id="logoOpacityDisplay" class="font-mono text-xs font-bold text-amber-400">85%</span>
+                                        </div>
+                                        <input type="range" id="autoLogoOpacity" min="20" max="100" value="85" class="w-full" oninput="updateLogoOpacity(this.value)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACTION BUTTONS -->
+                    <div class="pt-4 border-t border-[#23232f] flex flex-col sm:flex-row items-center gap-2.5">
+                        <button type="button" class="btn btn-accent flex-1 w-full justify-center text-sm py-2.5 font-bold" id="btnAutoRun" onclick="startAuto()">
+                            <span>🚀 Start AI Auto-Dubbing Video</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost py-2.5 px-3.5 text-xs text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 flex items-center gap-1.5" onclick="addToBatchQueue()" title="Add this project to sequential overnight batch queue">
+                            <span>➕ Add to Queue</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost py-2.5 px-3 text-xs text-[#ccc] flex items-center gap-1.5" onclick="openBatchQueueModal()" title="View and manage batch queue">
+                            <span>📋 Queue (<span id="queueBadge" class="text-amber-400 font-bold">0</span>)</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost py-2.5 px-3 text-xs text-[#888]" onclick="resetAutoForm()">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- RECENT PROJECTS GRID -->
+                <div class="card p-5">
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#23232f]">
+                        <h3 class="text-xs font-bold text-white flex items-center gap-2">
+                            <span>🕒 Recent Auto-Dubbing Projects</span>
+                        </h3>
+                        <button onclick="loadRecentHistory()" class="btn btn-ghost text-[11px] py-1 px-2 text-[#aaa]">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    <div id="historyGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                        <p class="text-xs text-[#666] col-span-full py-3 text-center">Loading project history...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- TAB 2: ADVANCED DUBBING PIPELINE                                 -->
+            <!-- ================================================================ -->
+            <div id="tab-pipe" class="space-y-4 hidden">
+                <div class="card p-6">
+                    <h2 class="text-sm font-bold mb-1 text-white">Advanced Dubbing Pipeline</h2>
+                    <p class="text-xs text-[#888] mb-4">Granular controls for specialized voice profile settings and subtitle burns.</p>
+
+                    <label class="label">Video File</label>
+                    <input type="file" id="pipeVideo" accept="video/*,audio/*" class="input mb-4">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="label">Spoken Language</label>
+                            <select id="pipeLang" class="input">
+                                <option value="auto">Auto detect</option>
+                                <option value="zh">Chinese 中文</option>
+                                <option value="en">English</option>
+                                <option value="th">Thai</option>
+                                <option value="vi">Vietnamese</option>
+                                <option value="ja">Japanese</option>
+                                <option value="ko">Korean</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">Translation Engine</label>
+                            <select id="pipeEngine" class="input">
+                                <option value="auto">Auto (Best available)</option>
+                                <option value="gemini">Google Gemini AI</option>
+                                <option value="openai">OpenAI GPT-4o</option>
+                                <option value="groq">Groq Llama 3.3</option>
+                                <option value="google">Google Translate</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="label">Voice Profile</label>
+                            <select id="pipeVoice" class="input">
+                                <option value="narrator_female">🎙️ និទានស្រី (Female Narrator)</option>
+                                <option value="narrator_male">🎙️ និទានប្រុស (Male Narrator)</option>
+                                <option value="recap_fast">⚡ សម្រាយរហ័ស (Fast Recap Narrator)</option>
+                                <option value="hero_male">👦 តួឯកប្រុស / កំលោះ (Hero / Young Male)</option>
+                                <option value="heroine_female">👧 តួឯកស្រី / ក្រមុំ (Heroine / Young Female)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">Dubbing Audio Mode</label>
+                            <select id="pipeDubMode" class="input">
+                                <option value="duck">🎵 Smart BGM Auto-Ducking</option>
+                                <option value="mute">🔇 Voice Only (Mute Original)</option>
+                                <option value="mix">🎚️ Custom Mix</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 mb-5">
+                        <label class="flex items-center gap-2 text-sm text-[#ccc] cursor-pointer bg-[#101016] p-2.5 rounded border border-[#23232f]">
+                            <input type="checkbox" id="pipeDetectVoice" checked class="accent-amber-400 w-4 h-4">
+                            <div>
+                                <div class="text-white text-xs font-semibold">👥 Multi-Character Voice Auto-Detection</div>
+                                <div class="text-[11px] text-[#888]">Auto-cast Girl, Boy, Man, Woman, Old Man, Old Woman</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-[#ccc] cursor-pointer">
+                            <input type="checkbox" id="pipeTts" class="accent-white" checked>
+                            Generate Khmer Speech (TTS)
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-[#ccc] cursor-pointer">
+                            <input type="checkbox" id="pipeBurnSubs" checked class="accent-white">
+                            Burn Subtitles on Video
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-[#ccc] cursor-pointer">
+                            <input type="checkbox" id="pipeBilingual" class="accent-white">
+                            Bilingual Subtitles (Khmer + Original)
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary w-full justify-center py-2.5 font-bold" id="btnPipe" onclick="startPipeline()">
+                        Run Advanced Dubbing Pipeline
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- TAB 3: KHMER STT (WHISPER)                                       -->
+            <!-- ================================================================ -->
+            <div id="tab-srt" class="space-y-4 hidden">
+                <div class="card p-6">
+                    <h2 class="text-sm font-bold mb-1 text-white">បង្កើត SRT ជាអក្សរខ្មែរ (Khmer STT)</h2>
+                    <p class="text-xs text-[#888] mb-4">
+                        Speech-to-Text for native Khmer audio using <b class="text-white">Local Khmer Fine-Tuned Whisper</b> or <b class="text-white">Kiri STT Cloud</b>.
+                    </p>
+
+                    <label class="label">Video / Audio File</label>
+                    <input type="file" id="srtVideo" accept="video/*,audio/*" class="input mb-4">
+
+                    <label class="label">ASR Engine</label>
+                    <select id="srtModel" class="input mb-5">
+                        <option value="khmer-ft" selected>★ Local Khmer fine-tuned (Best free offline)</option>
+                        <option value="khmer-large">Local Khmer large (Heavier / More accurate)</option>
+                        <option value="kiri">Kiri API (Khmer-first cloud)</option>
+                        <option value="khmer-tiny">Local Khmer tiny (Fastest)</option>
+                        <option value="auto">Auto (Kiri → Local FT)</option>
+                    </select>
+
+                    <button class="btn btn-primary w-full justify-center py-2.5 font-bold" id="btnTranscribe" onclick="startTranscribe()">
+                        Generate Khmer SRT Subtitles
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- TAB 4: SRT TO SPEECH (TTS)                                       -->
+            <!-- ================================================================ -->
+            <div id="tab-tts" class="space-y-4 hidden">
+                <div class="card p-6">
+                    <h2 class="text-sm font-bold mb-1 text-white">SRT → សំឡេងខ្មែរ (TTS Voice-over)</h2>
+                    <p class="text-xs text-[#888] mb-4">Convert existing Khmer SRT subtitles into human-like audio synchronized with timestamps.</p>
+
+                    <label class="label">Khmer SRT File</label>
+                    <input type="file" id="ttsSrt" accept=".srt" class="input mb-4">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="label">Character Voice Profile</label>
+                            <select id="ttsVoice" class="input">
+                                <option value="recap_fast" selected>⚡ សម្រាយរហ័ស (Fast Recap Narrator)</option>
+                                <option value="narrator_female">🎙️ និទានស្រី (Female Narrator)</option>
+                                <option value="narrator_male">🎙️ និទានប្រុស (Male Narrator)</option>
+                                <option value="hero_male">👦 តួឯកប្រុស / កំលោះ (Hero / Young Male)</option>
+                                <option value="heroine_female">👧 តួឯកស្រី / ក្រមុំ (Heroine / Young Female)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">Speed Rate</label>
+                            <select id="ttsRate" class="input">
+                                <option value="-15%">−15% (Clear &amp; Slower)</option>
+                                <option value="-8%">−8% (Natural story)</option>
+                                <option value="-5%" selected>−5% (Recap pace)</option>
+                                <option value="+0%">Normal (0%)</option>
+                                <option value="+10%">+10% (Fast)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label class="flex items-center gap-2 text-xs text-[#ccc] mb-5 cursor-pointer">
+                        <input type="checkbox" id="ttsMerge" checked class="accent-white">
+                        Merge into one synchronized full-length MP3 track
+                    </label>
+
+                    <button class="btn btn-primary w-full justify-center py-2.5 font-bold" id="btnTts" onclick="startTts()">
+                        Generate Khmer Speech
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- TAB 5: VIDEO SPLITTER                                            -->
+            <!-- ================================================================ -->
+            <div id="tab-cut" class="space-y-4 hidden">
+                <div class="card p-6">
+                    <h2 class="text-sm font-bold mb-1 text-white">កាត់វីដេអូជាភាគ (Equal Splitter)</h2>
+                    <p class="text-xs text-[#888] mb-4">Quickly split long episodes into equal parts for TikTok / Reels / Shorts.</p>
+
+                    <label class="label">Video File</label>
+                    <input type="file" id="cutVideo" accept="video/*" class="input mb-4">
+
+                    <div class="grid grid-cols-3 gap-3 mb-5">
+                        <div>
+                            <label class="label">Parts</label>
+                            <input type="number" id="cutSegments" value="6" min="2" max="50" class="input">
+                        </div>
+                        <div>
+                            <label class="label">Quality</label>
+                            <select id="cutQuality" class="input">
+                                <option value="high">High</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">Audio</label>
+                            <select id="cutAudio" class="input">
+                                <option value="true" selected>Keep</option>
+                                <option value="false">Remove</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary w-full justify-center py-2.5 font-bold" id="btnCut" onclick="startCut()">
+                        Start Split
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- TAB 6: MERGE CLIPS                                               -->
+            <!-- ================================================================ -->
+            <div id="tab-batch" class="space-y-4 hidden">
+                <div class="card p-6">
+                    <h2 class="text-sm font-bold mb-1 text-white">Merge Video Clips</h2>
+                    <p class="text-xs text-[#888] mb-4">Join multiple short video parts into one combined MP4 for storytelling.</p>
+
+                    <label class="label">Select Video Clips</label>
+                    <input type="file" id="batchFiles" accept="video/*" multiple class="input mb-4" onchange="onBatchFiles()">
+
+                    <label class="label">Output Project Name</label>
+                    <input type="text" id="batchJobName" class="input mb-4" placeholder="e.g. Full_Movie_EP01">
+
+                    <div id="batchListWrap" class="hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="label mb-0">Clip Order</label>
+                            <span id="batchCount" class="text-[11px] text-[#888]"></span>
+                        </div>
+                        <ul id="batchList" class="space-y-1 max-h-64 overflow-y-auto border border-[#23232f] rounded p-2 mb-4 bg-black"></ul>
+
+                        <label class="flex items-center gap-2 text-xs text-[#888] mb-4 cursor-pointer">
+                            <input type="checkbox" id="batchReencode" class="accent-white" checked>
+                            Safe re-encode (normalizes differing resolutions &amp; framerates)
+                        </label>
+
+                        <button class="btn btn-primary w-full justify-center py-2.5 font-bold" id="btnBatch" onclick="startBatchMerge()">
+                            Merge Clips → Single MP4
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- TAB 7: DOWNLOADER                                                -->
+            <!-- ================================================================ -->
+            <div id="tab-yt" class="space-y-4 hidden">
+                <div class="card p-6">
+                    <h2 class="text-sm font-bold mb-1 text-white">Video Downloader (yt-dlp)</h2>
+                    <p class="text-xs text-[#888] mb-4">Download videos from YouTube, TikTok, Facebook, Douyin, Bilibili.</p>
+
+                    <label class="label">Video URL</label>
+                    <input type="url" id="ytUrl" placeholder="https://..." class="input mb-5 font-mono text-xs">
+
+                    <button class="btn btn-primary w-full justify-center py-2.5 font-bold" id="btnYt" onclick="startYt()">
+                        Download Video
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: INTERACTIVE SCRIPT REVIEW CHECKPOINT                               -->
+<!-- ========================================================================= -->
+<div id="scriptReviewModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="card w-full max-w-4xl max-h-[92vh] flex flex-col border border-amber-500/30 shadow-2xl bg-[#12121a]">
+        <div class="p-4 border-b border-[#23232f] flex items-center justify-between bg-[#171722]">
+            <div class="flex items-center gap-2.5">
+                <span class="text-xl">⏸️</span>
+                <div>
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        Script Review &amp; Voice Cast Checkpoint
+                        <span class="badge-pro text-[9px]">PAUSED</span>
+                    </h3>
+                    <p class="text-[11px] text-[#888]">Review translated Khmer dialogues, make adjustments, or change character voices before audio synthesis.</p>
+                </div>
+            </div>
+            <span id="reviewJobIdBadge" class="text-[10px] font-mono text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800">Job: #---</span>
+        </div>
+
+        <div class="p-4 overflow-y-auto flex-1 space-y-2.5" id="reviewLinesContainer">
+            <!-- Line cards rendered dynamically -->
+        </div>
+
+        <div class="p-3.5 border-t border-[#23232f] bg-[#171722] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span class="text-xs text-[#888]"><span id="reviewLinesCount" class="font-bold text-amber-400">0</span> lines ready for dubbing</span>
+            <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                <button type="button" class="btn btn-ghost text-xs py-2 px-3 flex-1 sm:flex-initial" onclick="skipScriptReview()">
+                    ⏭️ Skip (Use Auto)
+                </button>
+                <button type="button" class="btn btn-accent text-xs py-2 px-4 font-bold flex-1 sm:flex-initial" onclick="confirmScriptReview()">
+                    ✓ Approve &amp; Generate Dubbing
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: GLOSSARY & PRONUNCIATION DICTIONARY                                -->
+<!-- ========================================================================= -->
+<div id="glossaryModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="card w-full max-w-xl max-h-[85vh] flex flex-col border border-[#2d2d3f] shadow-2xl bg-[#12121a]">
+        <div class="p-4 border-b border-[#23232f] flex items-center justify-between bg-[#171722]">
+            <div class="flex items-center gap-2">
+                <span class="text-lg">📚</span>
+                <div>
+                    <h3 class="text-sm font-bold text-white">Character Names &amp; Glossary Dictionary</h3>
+                    <p class="text-[11px] text-[#888]">Forces AI to translate names, sects, and titles with 100% consistent spelling.</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeGlossaryModal()" class="text-[#888] hover:text-white text-base bg-transparent border-0 cursor-pointer">✕</button>
+        </div>
+
+        <div class="p-3.5 border-b border-[#23232f] bg-[#0e0e15]">
+            <div class="text-[11px] font-bold text-[#aaa] uppercase tracking-wider mb-2">➕ Add New Character / Term</div>
+            <div class="flex gap-2">
+                <input type="text" id="glossaryTermInput" placeholder="Source (e.g. Ye Chen, CEO)" class="input text-xs flex-1">
+                <input type="text" id="glossaryRepInput" placeholder="Khmer (e.g. យេឆិន, លោកប្រធាន)" class="input text-xs flex-1 font-medium">
+                <button type="button" class="btn btn-primary text-xs px-3 font-semibold shrink-0" onclick="addGlossaryItem()">+ Add</button>
+            </div>
+        </div>
+
+        <div class="p-4 overflow-y-auto flex-1 space-y-1.5" id="glossaryListContainer">
+            <!-- List items populated by JS -->
+        </div>
+
+        <div class="p-3.5 border-t border-[#23232f] bg-[#171722] flex items-center justify-between">
+            <span class="text-xs text-[#777]" id="glossarySummaryText">3 terms configured</span>
+            <div class="flex gap-2">
+                <button type="button" class="btn btn-ghost text-xs py-1.5 px-3" onclick="closeGlossaryModal()">Cancel</button>
+                <button type="button" class="btn btn-accent text-xs py-1.5 px-4 font-bold" onclick="saveGlossaryModal()">Save Glossary</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: OVERNIGHT BATCH DUBBING QUEUE                                      -->
+<!-- ========================================================================= -->
+<div id="batchQueueModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="card w-full max-w-3xl max-h-[85vh] flex flex-col border border-[#2d2d3f] shadow-2xl bg-[#12121a]">
+        <div class="p-4 border-b border-[#23232f] flex items-center justify-between bg-[#171722]">
+            <div class="flex items-center gap-2">
+                <span class="text-lg">📋</span>
+                <div>
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        Overnight Sequential Batch Queue
+                        <span id="queueRunningPill" class="hidden text-[9px] bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800 animate-pulse">Running</span>
+                    </h3>
+                    <p class="text-[11px] text-[#888]">Queue up whole drama series or batches of video clips to process sequentially.</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeBatchQueueModal()" class="text-[#888] hover:text-white text-base bg-transparent border-0 cursor-pointer">✕</button>
+        </div>
+
+        <div class="p-4 overflow-y-auto flex-1 space-y-2" id="queueListContainer">
+            <!-- List of queued tasks -->
+        </div>
+
+        <div class="p-3.5 border-t border-[#23232f] bg-[#171722] flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <button type="button" class="btn btn-ghost text-xs py-1.5 px-2.5 text-[#aaa]" onclick="clearCompletedQueue()">
+                    🗑️ Clear Finished
+                </button>
+                <button type="button" class="btn btn-ghost text-xs py-1.5 px-2.5 text-[#aaa]" onclick="refreshBatchQueueUI()">
+                    🔄 Refresh
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" class="btn btn-accent text-xs py-1.5 px-4 font-bold" id="btnStartQueue" onclick="startBatchQueueWorker()">
+                    ▶️ Start Processing Queue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSourceMode = 'file';
+let lastCompletedJobDir = '';
+
+const tabTitles = {
+    'auto': { title: '1-Click AI Video Dubbing & Translation', sub: 'Automated Speech-to-Text, Natural Khmer Translation, Voice Cloning & BGM Auto-Ducking' },
+    'pipe': { title: 'Advanced Dubbing Pipeline', sub: 'Fine-tune translation engines, voice profiles, and audio mastering' },
+    'srt': { title: 'Khmer Speech-to-Text (STT)', sub: 'Generate accurate Khmer SRT subtitles from local Whisper or Kiri Cloud' },
+    'tts': { title: 'SRT Subtitles to Voice (TTS)', sub: 'Convert existing Khmer SRT subtitles into human-like audio' },
+    'cut': { title: 'Video Splitter (Equal Parts)', sub: 'Split long video files into equal parts for TikTok, Reels & Shorts' },
+    'batch': { title: 'Merge Video Clips', sub: 'Combine multiple short videos into one full MP4 movie file' },
+    'yt': { title: 'Video Downloader (yt-dlp)', sub: 'Download online videos from YouTube, TikTok, Facebook & Douyin' }
+};
+
+function switchTab(name) {
+    document.querySelectorAll('.sidebar-link').forEach(b => {
+        if (b.dataset.tab) b.classList.toggle('active', b.dataset.tab === name);
+    });
+    ['auto','pipe','srt','tts','cut','batch','yt'].forEach(t => {
+        const el = document.getElementById('tab-' + t);
+        if (el) el.classList.toggle('hidden', t !== name);
+    });
+
+    const info = tabTitles[name];
+    if (info) {
+        document.getElementById('pageTitle').textContent = info.title;
+        document.getElementById('pageSubtitle').textContent = info.sub;
+    }
+}
+
+function setSourceMode(mode) {
+    currentSourceMode = mode;
+    const btnFile = document.getElementById('srcModeFile');
+    const btnUrl = document.getElementById('srcModeUrl');
+    const blockFile = document.getElementById('sourceFileBlock');
+    const blockUrl = document.getElementById('sourceUrlBlock');
+
+    if (mode === 'file') {
+        btnFile.classList.add('bg-[#23232f]', 'text-white');
+        btnFile.classList.remove('text-[#888]');
+        btnUrl.classList.remove('bg-[#23232f]', 'text-white');
+        btnUrl.classList.add('text-[#888]');
+        blockFile.classList.remove('hidden');
+        blockUrl.classList.add('hidden');
+    } else {
+        btnUrl.classList.add('bg-[#23232f]', 'text-white');
+        btnUrl.classList.remove('text-[#888]');
+        btnFile.classList.remove('bg-[#23232f]', 'text-white');
+        btnFile.classList.add('text-[#888]');
+        blockUrl.classList.remove('hidden');
+        blockFile.classList.add('hidden');
+    }
+}
+
+// Multi-clip and Watermark Logo State
+let selectedAutoClips = [];
+let currentLogoFile = null;
+let hasSavedLogo = false;
+
+// Drag & Drop Handling
+const dropzone = document.getElementById('dropzone');
+if (dropzone) {
+    ['dragenter', 'dragover'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+            e.preventDefault(); e.stopPropagation();
+            dropzone.classList.add('dragover');
+        });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+            e.preventDefault(); e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        });
+    });
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            onAutoFilesSelected(files);
+        }
+    });
+}
+
+function onDropzoneClicked(e) {
+    if (e.target.closest('button') || e.target.closest('video') || e.target.closest('input')) {
+        return;
+    }
+    if (selectedAutoClips.length === 0) {
+        document.getElementById('autoVideo').click();
+    }
+}
+
+function onAutoFilesSelected(files) {
+    if (!files || files.length === 0) return;
+    selectedAutoClips = Array.from(files).filter(f => f && f.name);
+    updateAutoFilesUI();
+}
+
+function onAutoAddMoreFiles(files) {
+    if (!files || files.length === 0) return;
+    const newFiles = Array.from(files).filter(f => f && f.name);
+    selectedAutoClips = selectedAutoClips.concat(newFiles);
+    const addInput = document.getElementById('autoAddMoreInput');
+    if (addInput) addInput.value = '';
+    updateAutoFilesUI();
+}
+
+function moveAutoClip(index, dir) {
+    const targetIdx = index + dir;
+    if (targetIdx < 0 || targetIdx >= selectedAutoClips.length) return;
+    const temp = selectedAutoClips[index];
+    selectedAutoClips[index] = selectedAutoClips[targetIdx];
+    selectedAutoClips[targetIdx] = temp;
+    updateAutoFilesUI();
+}
+
+function removeAutoClip(index) {
+    if (index >= 0 && index < selectedAutoClips.length) {
+        selectedAutoClips.splice(index, 1);
+        updateAutoFilesUI();
+    }
+}
+
+function updateAutoFilesUI() {
+    const emptyEl = document.getElementById('dropzoneEmpty');
+    const loadedEl = document.getElementById('dropzoneLoaded');
+    const multiLoadedEl = document.getElementById('dropzoneMultiLoaded');
+    const jobNameInput = document.getElementById('autoJobName');
+
+    if (selectedAutoClips.length === 0) {
+        emptyEl.classList.remove('hidden');
+        loadedEl.classList.add('hidden');
+        multiLoadedEl.classList.add('hidden');
+        const previewPlayer = document.getElementById('sourcePreviewPlayer');
+        if (previewPlayer) {
+            previewPlayer.pause();
+            previewPlayer.removeAttribute('src');
+            previewPlayer.load();
+        }
+        return;
+    }
+
+    if (selectedAutoClips.length === 1) {
+        emptyEl.classList.add('hidden');
+        loadedEl.classList.remove('hidden');
+        multiLoadedEl.classList.add('hidden');
+
+        const file = selectedAutoClips[0];
+        document.getElementById('autoFileName').textContent = file.name;
+        const mb = (file.size / (1024 * 1024)).toFixed(1);
+        document.getElementById('autoFileSize').textContent = mb + ' MB';
+
+        const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-\u1780-\u17FF]/g, '_');
+        if (jobNameInput && !jobNameInput.value.trim()) jobNameInput.value = base;
+
+        try {
+            const previewPlayer = document.getElementById('sourcePreviewPlayer');
+            previewPlayer.src = URL.createObjectURL(file);
+        } catch (_) {}
+        return;
+    }
+
+    // Multiple clips selected (Auto-Merge Mode)
+    emptyEl.classList.add('hidden');
+    loadedEl.classList.add('hidden');
+    multiLoadedEl.classList.remove('hidden');
+
+    let totalBytes = 0;
+    selectedAutoClips.forEach(f => { totalBytes += (f.size || 0); });
+    const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+
+    document.getElementById('multiClipSummary').textContent = `${selectedAutoClips.length} Clips Selected (${totalMb} MB total)`;
+
+    if (jobNameInput && (!jobNameInput.value.trim() || jobNameInput.value.startsWith('Merge_'))) {
+        const firstStem = selectedAutoClips[0].name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_\-\u1780-\u17FF]/g, '_');
+        jobNameInput.value = `Merge_${firstStem}_${selectedAutoClips.length}Clips`;
+    }
+
+    const listEl = document.getElementById('multiClipList');
+    listEl.innerHTML = '';
+    selectedAutoClips.forEach((clip, i) => {
+        const itemMb = (clip.size / (1024 * 1024)).toFixed(1);
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between p-2 rounded bg-[#13131b] border border-[#23232f]';
+        row.innerHTML = `
+            <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                <span class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center shrink-0">${i + 1}</span>
+                <div class="min-w-0">
+                    <p class="text-xs font-medium text-white truncate max-w-xs sm:max-w-md" title="${clip.name}">${clip.name}</p>
+                    <p class="text-[10px] text-[#777] font-mono">${itemMb} MB</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+                <button type="button" onclick="moveAutoClip(${i}, -1)" ${i === 0 ? 'disabled' : ''} class="btn btn-ghost text-xs py-0.5 px-1.5 text-[#aaa] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed" title="Move Up">↑</button>
+                <button type="button" onclick="moveAutoClip(${i}, 1)" ${i === selectedAutoClips.length - 1 ? 'disabled' : ''} class="btn btn-ghost text-xs py-0.5 px-1.5 text-[#aaa] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed" title="Move Down">↓</button>
+                <button type="button" onclick="removeAutoClip(${i})" class="btn btn-ghost text-xs py-0.5 px-1.5 text-red-400 hover:text-red-300" title="Remove Clip">✕</button>
+            </div>
+        `;
+        listEl.appendChild(row);
+    });
+}
+
+function onAutoFile() {
+    const input = document.getElementById('autoVideo');
+    if (input && input.files && input.files.length > 0) {
+        onAutoFilesSelected(input.files);
+    }
+}
+
+function cancelAutoFile() {
+    selectedAutoClips = [];
+    const input = document.getElementById('autoVideo');
+    if (input) input.value = '';
+    const addMore = document.getElementById('autoAddMoreInput');
+    if (addMore) addMore.value = '';
+    updateAutoFilesUI();
+}
+
+// Logo Watermark Handlers
+function toggleLogoSection() {
+    const enabled = document.getElementById('autoLogoEnabled')?.checked || false;
+    const wrapper = document.getElementById('logoControlsWrapper');
+    if (wrapper) {
+        if (enabled) wrapper.classList.remove('opacity-40');
+        else wrapper.classList.add('opacity-40');
+    }
+}
+
+function onAutoLogoSelected(input) {
+    const file = input.files[0];
+    if (!file) return;
+    currentLogoFile = file;
+
+    const url = URL.createObjectURL(file);
+    const thumbImg = document.getElementById('logoThumbImg');
+    const placeholder = document.getElementById('logoThumbPlaceholder');
+    if (thumbImg) {
+        thumbImg.src = url;
+        thumbImg.classList.remove('hidden');
+    }
+    if (placeholder) placeholder.classList.add('hidden');
+
+    const statusEl = document.getElementById('logoStatusText');
+    if (statusEl) statusEl.textContent = file.name;
+    const badge = document.getElementById('savedLogoBadge');
+    if (badge) badge.classList.add('hidden');
+    const btnRemove = document.getElementById('btnRemoveLogo');
+    if (btnRemove) btnRemove.classList.remove('hidden');
+
+    const checkEl = document.getElementById('autoLogoEnabled');
+    if (checkEl) checkEl.checked = true;
+    toggleLogoSection();
+    updateLiveLogoPreview();
+}
+
+function removeLogo() {
+    currentLogoFile = null;
+    const fileInput = document.getElementById('autoLogoFile');
+    if (fileInput) fileInput.value = '';
+    const thumbImg = document.getElementById('logoThumbImg');
+    const placeholder = document.getElementById('logoThumbPlaceholder');
+    if (thumbImg) {
+        thumbImg.removeAttribute('src');
+        thumbImg.classList.add('hidden');
+    }
+    if (placeholder) placeholder.classList.remove('hidden');
+    const statusEl = document.getElementById('logoStatusText');
+    if (statusEl) statusEl.textContent = 'No custom logo selected';
+    const badge = document.getElementById('savedLogoBadge');
+    if (badge) badge.classList.add('hidden');
+    const btnRemove = document.getElementById('btnRemoveLogo');
+    if (btnRemove) btnRemove.classList.add('hidden');
+    hasSavedLogo = false;
+    updateLiveLogoPreview();
+}
+
+function updateLogoOpacity(val) {
+    const el = document.getElementById('autoLogoOpacity');
+    if (el) el.value = val;
+    const display = document.getElementById('logoOpacityDisplay');
+    if (display) display.textContent = val + '%';
+    updateLiveLogoPreview();
+}
+
+function updateLiveLogoPreview() {
+    const enabled = document.getElementById('autoLogoEnabled')?.checked || false;
+    const container = document.getElementById('cinemaLogoContainer');
+    const img = document.getElementById('cinemaLogoImg');
+    if (!container || !img) return;
+
+    if (!enabled || (!currentLogoFile && !hasSavedLogo)) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    if (currentLogoFile) {
+        img.src = URL.createObjectURL(currentLogoFile);
+    } else if (hasSavedLogo) {
+        img.src = '/logo-preview?t=' + (window._logoTs || Date.now());
+    }
+
+    const pos = document.getElementById('autoLogoPos')?.value || 'top-right';
+    const size = document.getElementById('autoLogoSize')?.value || 'medium';
+    const opacityVal = parseInt(document.getElementById('autoLogoOpacity')?.value || '85', 10);
+
+    img.style.opacity = (opacityVal / 100).toString();
+
+    const sizePxMap = {
+        'small': '60px',
+        'medium': '90px',
+        'large': '125px'
+    };
+    img.style.maxWidth = sizePxMap[size] || '90px';
+
+    container.style.top = '';
+    container.style.bottom = '';
+    container.style.left = '';
+    container.style.right = '';
+    container.style.transform = '';
+
+    if (pos === 'top-right') {
+        container.style.top = '14px';
+        container.style.right = '14px';
+    } else if (pos === 'top-left') {
+        container.style.top = '14px';
+        container.style.left = '14px';
+    } else if (pos === 'bottom-right') {
+        container.style.bottom = '14px';
+        container.style.right = '14px';
+    } else if (pos === 'bottom-left') {
+        container.style.bottom = '14px';
+        container.style.left = '14px';
+    } else if (pos === 'center') {
+        container.style.top = '50%';
+        container.style.left = '50%';
+        container.style.transform = 'translate(-50%, -50%)';
+    }
+
+    container.classList.remove('hidden');
+}
+
+function resetAutoForm() {
+    cancelAutoFile();
+    document.getElementById('autoUrlInput').value = '';
+    document.getElementById('autoJobName').value = '';
+    document.getElementById('resultCard').classList.add('hidden');
+    document.getElementById('progressBox').classList.add('hidden');
+    applyPreset('recap');
+}
+
+function applyPreset(preset) {
+    document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+    const target = document.getElementById('preset-' + preset);
+    if (target) target.classList.add('active');
+
+    const voiceEl = document.getElementById('autoVoice');
+    const styleEl = document.getElementById('autoStyle');
+    const modeEl = document.getElementById('autoDubMode');
+    const subColorEl = document.getElementById('autoSubColor');
+    const subSizeEl = document.getElementById('autoSubSize');
+    const subBoxEl = document.getElementById('autoSubBox');
+    const detectVoiceEl = document.getElementById('autoDetectVoice');
+    const rateEl = document.getElementById('autoSpeechRate');
+    const aspectEl = document.getElementById('autoAspectRatio');
+
+    if (preset === 'recap') {
+        if (voiceEl) voiceEl.value = 'recap_fast';
+        if (styleEl) styleEl.value = 'recap';
+        if (modeEl) modeEl.value = 'duck';
+        if (subColorEl) subColorEl.value = 'yellow';
+        if (subSizeEl) subSizeEl.value = '22';
+        if (subBoxEl) subBoxEl.checked = false;
+        if (detectVoiceEl) detectVoiceEl.checked = true;
+        if (rateEl) rateEl.value = '-5%';
+        if (aspectEl) aspectEl.value = 'original';
+        updateBgmSlider(20);
+        updateVoiceSlider(110);
+    } else if (preset === 'dialogue') {
+        if (voiceEl) voiceEl.value = 'heroine_female';
+        if (styleEl) styleEl.value = 'dialogue';
+        if (modeEl) modeEl.value = 'duck';
+        if (subColorEl) subColorEl.value = 'white';
+        if (subSizeEl) subSizeEl.value = '22';
+        if (subBoxEl) subBoxEl.checked = false;
+        if (detectVoiceEl) detectVoiceEl.checked = true;
+        if (rateEl) rateEl.value = '-5%';
+        if (aspectEl) aspectEl.value = 'original';
+        updateBgmSlider(25);
+        updateVoiceSlider(100);
+    } else if (preset === 'shorts') {
+        if (voiceEl) voiceEl.value = 'hero_male';
+        if (styleEl) styleEl.value = 'recap';
+        if (modeEl) modeEl.value = 'duck';
+        if (subColorEl) subColorEl.value = 'cyan';
+        if (subSizeEl) subSizeEl.value = '26';
+        if (subBoxEl) subBoxEl.checked = true;
+        if (detectVoiceEl) detectVoiceEl.checked = true;
+        if (rateEl) rateEl.value = '+0%';
+        if (aspectEl) aspectEl.value = '9:16';
+        updateBgmSlider(20);
+        updateVoiceSlider(120);
+    } else if (preset === 'voiceover') {
+        if (voiceEl) voiceEl.value = 'narrator_female';
+        if (styleEl) styleEl.value = 'recap';
+        if (modeEl) modeEl.value = 'mute';
+        if (subColorEl) subColorEl.value = 'white';
+        if (subSizeEl) subSizeEl.value = '20';
+        if (subBoxEl) subBoxEl.checked = false;
+        if (detectVoiceEl) detectVoiceEl.checked = false;
+        if (rateEl) rateEl.value = '-5%';
+        if (aspectEl) aspectEl.value = 'original';
+        updateBgmSlider(0);
+        updateVoiceSlider(100);
+    }
+    updateLiveSubPreview();
+    onAspectRatioChange();
+}
+
+function onAspectRatioChange() {
+    const ratio = document.getElementById('autoAspectRatio')?.value || 'original';
+    const screen = document.getElementById('cinemaScreen');
+    if (!screen) return;
+    if (ratio === '9:16') {
+        screen.style.maxWidth = '250px';
+        screen.style.aspectRatio = '9 / 16';
+        screen.style.margin = '0 auto';
+    } else if (ratio === '1:1') {
+        screen.style.maxWidth = '340px';
+        screen.style.aspectRatio = '1 / 1';
+        screen.style.margin = '0 auto';
+    } else {
+        screen.style.maxWidth = '100%';
+        screen.style.aspectRatio = '16 / 9';
+        screen.style.margin = '0';
+    }
+}
+
+function updateBgmSlider(val) {
+    document.getElementById('bgmVolumeSlider').value = val;
+    let label = val + '%';
+    if (val === 0 || val === '0') label += ' (Silent BGM)';
+    else if (val <= 25) label += ' (Recommended Recap)';
+    else label += ' (Loud)';
+    document.getElementById('bgmVolumeDisplay').textContent = label;
+}
+
+function updateVoiceSlider(val) {
+    document.getElementById('voiceVolumeSlider').value = val;
+    let label = val + '%';
+    if (val < 90) label += ' (Soft)';
+    else if (val <= 110) label += ' (Balanced)';
+    else label += ' (Boosted)';
+    document.getElementById('voiceVolumeDisplay').textContent = label;
+}
+
+function onDubModeChange() {
+    const mode = document.getElementById('autoDubMode').value;
+    if (mode === 'mute') updateBgmSlider(0);
+    else if (mode === 'duck') updateBgmSlider(25);
+}
+
+function updateLiveSubPreview() {
+    const color = document.getElementById('autoSubColor').value;
+    const size = document.getElementById('autoSubSize').value;
+    const hasBox = document.getElementById('autoSubBox').checked;
+    const isBilingual = document.getElementById('autoBilingual').checked;
+    const burnSubs = document.getElementById('autoBurnSubs').checked;
+
+    const previewContainer = document.getElementById('subPreviewContainer');
+    const previewText = document.getElementById('subPreviewText');
+    const previewBilingual = document.getElementById('subPreviewBilingual');
+
+    if (!burnSubs) {
+        previewContainer.classList.add('opacity-20');
+    } else {
+        previewContainer.classList.remove('opacity-20');
+    }
+
+    const colorHexMap = {
+        'yellow': '#FFEB3B',
+        'white': '#FFFFFF',
+        'cyan': '#00E5FF',
+        'green': '#10B981'
+    };
+    previewText.style.color = colorHexMap[color] || '#FFEB3B';
+    previewText.style.fontSize = size + 'px';
+
+    if (hasBox) {
+        previewContainer.style.background = 'rgba(0, 0, 0, 0.78)';
+        previewContainer.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+    } else {
+        previewContainer.style.background = 'transparent';
+        previewContainer.style.border = 'none';
+    }
+
+    if (isBilingual) {
+        previewBilingual.classList.remove('hidden');
+    } else {
+        previewBilingual.classList.add('hidden');
+    }
+}
+
+// toolTitle set → a plain tool job (split / download): no dub steps, no dub result card
+let progressToolMode = false;
+function showProgress(toolTitle) {
+    progressToolMode = !!toolTitle;
+    document.getElementById('progressBox').classList.remove('hidden');
+    document.getElementById('progressResult').classList.add('hidden');
+    document.getElementById('progressOpenFolder').classList.add('hidden');
+    document.getElementById('resultCard').classList.add('hidden');
+    document.getElementById('progressTitle').textContent = toolTitle || 'AI Dubbing Pipeline In Progress';
+    document.getElementById('progressSteps').classList.toggle('hidden', progressToolMode);
+    document.getElementById('progressHint').classList.toggle('hidden', progressToolMode);
+    if (progressToolMode) document.getElementById('progressStatus').textContent = 'Starting...';
+    resetSteppers();
+}
+
+function resetSteppers() {
+    for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById('stepIndicator' + i);
+        if (el) el.className = 'stepper-item';
+    }
+}
+
+function updateStepperByPercent(pct) {
+    const setStep = (id, state) => {
+        const el = document.getElementById('stepIndicator' + id);
+        if (el) el.className = 'stepper-item ' + state;
+    };
+    if (pct < 20) {
+        setStep(1, 'running');
+    } else if (pct < 45) {
+        setStep(1, 'done'); setStep(2, 'running');
+    } else if (pct < 70) {
+        setStep(1, 'done'); setStep(2, 'done'); setStep(3, 'running');
+    } else if (pct < 90) {
+        setStep(1, 'done'); setStep(2, 'done'); setStep(3, 'done'); setStep(4, 'running');
+    } else if (pct < 100) {
+        setStep(1, 'done'); setStep(2, 'done'); setStep(3, 'done'); setStep(4, 'done'); setStep(5, 'running');
+    } else {
+        for (let i = 1; i <= 5; i++) setStep(i, 'done');
+    }
+}
+
+function setBusy(id, busy) {
+    const b = document.getElementById(id);
+    if (b) b.disabled = busy;
+}
+
+async function pollUntilDone() {
+    return new Promise(resolve => {
+        const iv = setInterval(async () => {
+            try {
+                const r = await fetch('/progress');
+                const p = await r.json();
+                document.getElementById('progressStatus').textContent = p.status || '';
+                const pct = p.percent || 0;
+                document.getElementById('progressPct').textContent = pct + '%';
+                document.getElementById('progressBar').style.width = pct + '%';
+                updateStepperByPercent(pct);
+
+                if (p.waiting_for_review && !window._reviewModalOpen) {
+                    openScriptReviewModal(p.review_job_id, p.review_segments || []);
+                }
+
+                if (!p.is_processing) {
+                    clearInterval(iv);
+                    if (p.result_path) {
+                        const el = document.getElementById('progressResult');
+                        el.textContent = '✓ Output: ' + p.result_path;
+                        el.classList.remove('hidden');
+                        if (progressToolMode) {
+                            const btn = document.getElementById('progressOpenFolder');
+                            const folder = p.job_dir || p.result_path;
+                            btn.onclick = () => openOutputFolder(folder);
+                            btn.classList.remove('hidden');
+                        }
+                    }
+                    if (!progressToolMode && (pct >= 95 || p.final_video)) {
+                        displayResultCard(p);
+                    }
+                    loadRecentHistory();
+                    resolve(p);
+                }
+            } catch (_) {}
+        }, 700);
+    });
+}
+
+function displayResultCard(p) {
+    lastCompletedJobDir = p.job_dir || p.result_path || '';
+    const card = document.getElementById('resultCard');
+    const player = document.getElementById('resultPlayer');
+    const btnVideo = document.getElementById('btnDlVideo');
+    const btnSrt = document.getElementById('btnDlSrt');
+    const btnAudio = document.getElementById('btnDlAudio');
+
+    const videoPath = p.final_video || '';
+    if (videoPath) {
+        player.src = '/stream-video?path=' + encodeURIComponent(videoPath);
+        btnVideo.href = '/download-file?path=' + encodeURIComponent(videoPath);
+        btnVideo.classList.remove('hidden');
+    } else {
+        btnVideo.classList.add('hidden');
+    }
+
+    if (p.final_srt) {
+        btnSrt.href = '/download-file?path=' + encodeURIComponent(p.final_srt);
+        btnSrt.classList.remove('hidden');
+    } else {
+        btnSrt.classList.add('hidden');
+    }
+
+    if (p.final_audio) {
+        btnAudio.href = '/download-file?path=' + encodeURIComponent(p.final_audio);
+        btnAudio.classList.remove('hidden');
+    } else {
+        btnAudio.classList.add('hidden');
+    }
+
+    card.classList.remove('hidden');
+    card.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function openOutputFolder(folderPath) {
+    const target = folderPath || lastCompletedJobDir;
+    if (!target) return alert('No folder path available');
+    try {
+        const r = await fetch('/open-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: target })
+        });
+        const d = await r.json();
+        if (!d.success) alert(d.error || 'Failed to open folder');
+    } catch (e) {
+        alert('Could not open folder: ' + e.message);
+    }
+}
+
+async function startAuto() {
+    const bgmVol = (parseFloat(document.getElementById('bgmVolumeSlider').value) / 100).toFixed(2);
+    const voiceVol = (parseFloat(document.getElementById('voiceVolumeSlider').value) / 100).toFixed(2);
+
+    const logoEnabled = document.getElementById('autoLogoEnabled')?.checked || false;
+    const logoPos = document.getElementById('autoLogoPos')?.value || 'top-right';
+    const logoSize = document.getElementById('autoLogoSize')?.value || 'medium';
+    const logoOpacity = ((parseFloat(document.getElementById('autoLogoOpacity')?.value || 85)) / 100).toFixed(2);
+
+    const aspectRatio = document.getElementById('autoAspectRatio')?.value || 'original';
+    const reviewScript = document.getElementById('autoReviewScript')?.checked || false;
+
+    if (currentSourceMode === 'file') {
+        if (!selectedAutoClips || selectedAutoClips.length === 0) {
+            return alert('Please upload or drag & drop at least one video file first');
+        }
+
+        const form = new FormData();
+        // Append all video files in order
+        for (const clip of selectedAutoClips) {
+            form.append('videos', clip);
+        }
+        form.append('video', selectedAutoClips[0]);
+        form.append('order', JSON.stringify(selectedAutoClips.map(f => f.name)));
+
+        form.append('sourceLang', document.getElementById('autoLang').value);
+        form.append('translateEngine', document.getElementById('autoEngine').value);
+        form.append('translateStyle', document.getElementById('autoStyle').value);
+        form.append('dubbingMode', document.getElementById('autoDubMode').value);
+        form.append('voice', document.getElementById('autoVoice').value);
+        form.append('rate', document.getElementById('autoSpeechRate').value);
+        form.append('jobName', (document.getElementById('autoJobName').value || '').trim());
+        form.append('bgmVolume', bgmVol);
+        form.append('voiceVolume', voiceVol);
+        form.append('doTts', 'true');
+        form.append('burnSubs', document.getElementById('autoBurnSubs').checked ? 'true' : 'false');
+        form.append('subBox', document.getElementById('autoSubBox').checked ? 'true' : 'false');
+        form.append('bilingualSubs', document.getElementById('autoBilingual').checked ? 'true' : 'false');
+        form.append('autoDetectVoice', document.getElementById('autoDetectVoice').checked ? 'true' : 'false');
+        form.append('subColor', document.getElementById('autoSubColor').value);
+        form.append('subSize', document.getElementById('autoSubSize').value);
+        form.append('aspectRatio', aspectRatio);
+        form.append('reviewScript', reviewScript ? 'true' : 'false');
+
+        // Logo watermark settings
+        form.append('logoEnabled', logoEnabled ? 'true' : 'false');
+        form.append('logoPos', logoPos);
+        form.append('logoSize', logoSize);
+        form.append('logoOpacity', logoOpacity);
+        if (currentLogoFile) {
+            form.append('logo', currentLogoFile);
+        }
+
+        showProgress();
+        setBusy('btnAutoRun', true);
+        try {
+            const res = await fetch('/pipeline', { method: 'POST', body: form });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Failed to start dubbing');
+            await pollUntilDone();
+        } catch (e) {
+            document.getElementById('progressStatus').textContent = 'Error: ' + e.message;
+        }
+        setBusy('btnAutoRun', false);
+    } else {
+        const url = document.getElementById('autoUrlInput').value.trim();
+        if (!url) return alert('Please enter a YouTube or web video link');
+
+        const payload = {
+            url: url,
+            sourceLang: document.getElementById('autoLang').value,
+            translateEngine: document.getElementById('autoEngine').value,
+            translateStyle: document.getElementById('autoStyle').value,
+            dubbingMode: document.getElementById('autoDubMode').value,
+            voice: document.getElementById('autoVoice').value,
+            jobName: (document.getElementById('autoJobName').value || '').trim(),
+            bgmVolume: parseFloat(bgmVol),
+            voiceVolume: parseFloat(voiceVol),
+            burnSubs: document.getElementById('autoBurnSubs').checked,
+            subBox: document.getElementById('autoSubBox').checked,
+            bilingualSubs: document.getElementById('autoBilingual').checked,
+            autoDetectVoice: document.getElementById('autoDetectVoice').checked,
+            subColor: document.getElementById('autoSubColor').value,
+            subSize: parseInt(document.getElementById('autoSubSize').value),
+            aspectRatio: aspectRatio,
+            reviewScript: reviewScript,
+            logoEnabled: logoEnabled,
+            logoPos: logoPos,
+            logoSize: logoSize,
+            logoOpacity: parseFloat(logoOpacity)
+        };
+
+        showProgress();
+        setBusy('btnAutoRun', true);
+        try {
+            const res = await fetch('/pipeline-from-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Failed to start URL dubbing');
+            await pollUntilDone();
+        } catch (e) {
+            document.getElementById('progressStatus').textContent = 'Error: ' + e.message;
+        }
+        setBusy('btnAutoRun', false);
+    }
+}
+
+async function loadRecentHistory() {
+    const grid = document.getElementById('historyGrid');
+    if (!grid) return;
+    try {
+        const r = await fetch('/history');
+        const list = await r.json();
+        if (!Array.isArray(list) || !list.length) {
+            grid.innerHTML = '<p class="text-xs text-[#666] col-span-full py-3 text-center">No projects yet. Translate your first video above!</p>';
+            return;
+        }
+        const recent = list.slice().reverse().slice(0, 6);
+        grid.innerHTML = recent.map(item => `
+            <div class="card-inner p-3 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-white truncate max-w-[160px]" title="${item.filename}">${item.filename}</span>
+                        <span class="text-[10px] text-[#777] font-mono">${item.date || ''}</span>
+                    </div>
+                    <p class="text-[10px] text-[#888] truncate mb-2" title="${item.output_path || ''}">${item.output_path || ''}</p>
+                </div>
+                <div class="flex items-center gap-1.5 pt-2 border-t border-[#23232f]">
+                    <button type="button" class="btn btn-ghost text-[10px] py-1 px-2 flex-1 text-white" onclick="openOutputFolder('${(item.output_path || '').replace(/\\/g, '\\\\')}')">
+                        📁 Folder
+                    </button>
+                    <a href="/studio" class="btn btn-ghost text-[10px] py-1 px-2 text-amber-400 no-underline">
+                        ✂️ Studio
+                    </a>
+                </div>
+            </div>
+        `).join('');
+    } catch (_) {
+        grid.innerHTML = '<p class="text-xs text-[#666] col-span-full py-3 text-center">History unavailable</p>';
+    }
+}
+
+async function startPipeline() {
+    const file = document.getElementById('pipeVideo').files[0];
+    if (!file) return alert('Select a video');
+    const form = new FormData();
+    form.append('video', file);
+    form.append('sourceLang', document.getElementById('pipeLang').value);
+    form.append('translateEngine', document.getElementById('pipeEngine').value);
+    form.append('voice', document.getElementById('pipeVoice').value);
+    form.append('dubbingMode', document.getElementById('pipeDubMode').value);
+    form.append('doTts', document.getElementById('pipeTts').checked ? 'true' : 'false');
+    form.append('burnSubs', document.getElementById('pipeBurnSubs').checked ? 'true' : 'false');
+    form.append('bilingualSubs', document.getElementById('pipeBilingual').checked ? 'true' : 'false');
+    form.append('autoDetectVoice', document.getElementById('pipeDetectVoice').checked ? 'true' : 'false');
+
+    showProgress();
+    setBusy('btnPipe', true);
+    try {
+        const res = await fetch('/pipeline', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Pipeline failed');
+        await pollUntilDone();
+    } catch (e) {
+        document.getElementById('progressStatus').textContent = 'Error: ' + e.message;
+    }
+    setBusy('btnPipe', false);
+}
+
+async function startTranscribe() {
+    const file = document.getElementById('srtVideo').files[0];
+    if (!file) return alert('Select video or audio');
+    const form = new FormData();
+    form.append('video', file);
+    form.append('model', document.getElementById('srtModel').value);
+    showProgress(); setBusy('btnTranscribe', true);
+    try {
+        const res = await fetch('/transcribe', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        await pollUntilDone();
+    } catch (e) {
+        document.getElementById('progressStatus').textContent = 'Error: ' + e.message;
+    }
+    setBusy('btnTranscribe', false);
+}
+
+async function startTts() {
+    const file = document.getElementById('ttsSrt').files[0];
+    if (!file) return alert('Select SRT file');
+    const form = new FormData();
+    form.append('srt_file', file);
+    form.append('voice', document.getElementById('ttsVoice').value);
+    form.append('rate', document.getElementById('ttsRate').value);
+    form.append('merge', document.getElementById('ttsMerge').checked ? 'true' : 'false');
+    showProgress(); setBusy('btnTts', true);
+    try {
+        const res = await fetch('/srt-to-speech', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        await pollUntilDone();
+    } catch (e) {
+        document.getElementById('progressStatus').textContent = 'Error: ' + e.message;
+    }
+    setBusy('btnTts', false);
+}
+
+async function startCut() {
+    const file = document.getElementById('cutVideo').files[0];
+    if (!file) return alert('Select video');
+    const form = new FormData();
+    form.append('video', file);
+    form.append('segments', document.getElementById('cutSegments').value);
+    form.append('quality', document.getElementById('cutQuality').value);
+    form.append('keepAudio', document.getElementById('cutAudio').value);
+    showProgress('Splitting Video'); setBusy('btnCut', true);
+    try {
+        const res = await fetch('/cut', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        await pollUntilDone();
+    } catch (e) {
+        document.getElementById('progressStatus').textContent = 'Error: ' + e.message;
+    }
+    setBusy('btnCut', false);
+}
+
+async function startYt() {
+    const url = document.getElementById('ytUrl').value.trim();
+    if (!url) return alert('Enter URL');
+    const form = new FormData();
+    form.append('url', url);
+    showProgress('Downloading Video'); setBusy('btnYt', true);
+    try {
+        const res = await fetch('/download', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        await pollUntilDone();
+    } catch (e) {
+        document.getElementById('progressStatus').textContent = 'Error: ' + e.message;
+    }
+    setBusy('btnYt', false);
+}
+
+let batchItems = [];
+function onBatchFiles() {
+    const input = document.getElementById('batchFiles');
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    batchItems = files.map((f, i) => ({ name: f.name, file: f, id: i + '_' + f.name }));
+    const job = document.getElementById('batchJobName');
+    if (job && !job.value.trim() && files[0]) {
+        job.value = files[0].name.replace(/\.[^.]+$/, '') + '_batch';
+    }
+    renderBatchList();
+    document.getElementById('batchListWrap').classList.remove('hidden');
+}
+
+function renderBatchList() {
+    const ul = document.getElementById('batchList');
+    const count = document.getElementById('batchCount');
+    count.textContent = batchItems.length + ' videos';
+    ul.innerHTML = batchItems.map((item, idx) => `
+        <li class="flex items-center gap-2 text-xs text-[#ccc] bg-[#0c0c10] border border-[#23232f] rounded px-2.5 py-1" data-idx="${idx}">
+            <span class="text-[#555] w-5 text-right font-mono">${idx + 1}</span>
+            <span class="flex-1 truncate">${item.name}</span>
+            <button type="button" class="btn btn-ghost text-[10px] px-2 py-0.5" onclick="batchMove(${idx}, -1)">↑</button>
+            <button type="button" class="btn btn-ghost text-[10px] px-2 py-0.5" onclick="batchMove(${idx}, 1)">↓</button>
+            <button type="button" class="btn btn-ghost text-[10px] px-2 py-0.5 text-[#888]" onclick="batchRemove(${idx})">✕</button>
+        </li>
+    `).join('');
+}
+
+function batchMove(idx, dir) {
+    const j = idx + dir;
+    if (j < 0 || j >= batchItems.length) return;
+    const tmp = batchItems[idx];
+    batchItems[idx] = batchItems[j];
+    batchItems[j] = tmp;
+    renderBatchList();
+}
+
+function batchRemove(idx) {
+    batchItems.splice(idx, 1);
+    renderBatchList();
+    if (!batchItems.length) document.getElementById('batchListWrap').classList.add('hidden');
+}
+
+async function startBatchMerge() {
+    if (batchItems.length < 2) return alert('Need at least 2 videos to merge');
+    const form = new FormData();
+    batchItems.forEach(item => form.append('videos', item.file, item.name));
+    form.append('order', JSON.stringify(batchItems.map(i => i.name)));
+    form.append('jobName', (document.getElementById('batchJobName').value || 'batch_merge').trim());
+    form.append('reencode', document.getElementById('batchReencode').checked ? 'true' : 'false');
+    showProgress();
+    setBusy('btnBatch', true);
+    try {
+        const res = await fetch('/batch-merge', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed');
+        await pollUntilDone();
+    } catch (e) {
+        document.getElementById('progressStatus').textContent = 'Error: ' + e.message;
+    }
+    setBusy('btnBatch', false);
+}
+
+async function previewCurrentVoice(selectId) {
+    const voice = document.getElementById(selectId).value;
+    try {
+        const r = await fetch('/preview-voice-sample', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                voice: voice,
+                text: 'សួស្តី! នេះជាការសាកល្បងសំឡេងរបស់ DAI Dubber Pro។'
+            })
+        });
+        const d = await r.json();
+        if (d.success && d.audio) {
+            new Audio(d.audio).play();
+        } else alert('Preview failed');
+    } catch (e) {
+        alert('Voice preview error');
+    }
+}
+
+async function loadAllVoicesIntoSelects() {
+    try {
+        const r = await fetch('/api/voices');
+        const d = await r.json();
+        if (d.success && d.voices) {
+            const populate = (selId) => {
+                const sel = document.getElementById(selId);
+                if (!sel) return;
+                const cur = sel.value;
+                sel.innerHTML = '';
+                const cloned = d.voices.filter(v => v.type === 'cloned');
+                const builtin = d.voices.filter(v => v.type === 'builtin');
+
+                if (cloned.length > 0) {
+                    const grpCloned = document.createElement('optgroup');
+                    grpCloned.label = '🎙️ Cloned Voices (Internet / Custom)';
+                    cloned.forEach(v => {
+                        const opt = document.createElement('option');
+                        opt.value = v.key;
+                        opt.textContent = v.name;
+                        grpCloned.appendChild(opt);
+                    });
+                    sel.appendChild(grpCloned);
+                }
+
+                const grpBuiltin = document.createElement('optgroup');
+                grpBuiltin.label = '🎭 Built-in Character Profiles';
+                builtin.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.key;
+                    opt.textContent = v.name;
+                    grpBuiltin.appendChild(opt);
+                });
+                sel.appendChild(grpBuiltin);
+
+                if (cur) sel.value = cur;
+            };
+            populate('autoVoice');
+            populate('pipeVoice');
+            populate('ttsVoice');
+        }
+    } catch (_) {}
+}
+
+// =============================================================================
+// INTERACTIVE SCRIPT REVIEW CHECKPOINT
+// =============================================================================
+let currentReviewJobId = '';
+let currentReviewSegments = [];
+
+function openScriptReviewModal(jobId, segments) {
+    window._reviewModalOpen = true;
+    currentReviewJobId = jobId;
+    currentReviewSegments = segments || [];
+    const jobBadge = document.getElementById('reviewJobIdBadge');
+    if (jobBadge) jobBadge.textContent = 'Job: #' + (jobId || 'review');
+    const countEl = document.getElementById('reviewLinesCount');
+    if (countEl) countEl.textContent = currentReviewSegments.length;
+    renderReviewLines();
+    const modal = document.getElementById('scriptReviewModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeScriptReviewModal() {
+    window._reviewModalOpen = false;
+    const modal = document.getElementById('scriptReviewModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function renderReviewLines() {
+    const container = document.getElementById('reviewLinesContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const voiceOptions = [
+        { key: 'recap_fast', label: '⚡ Fast Recap Narrator' },
+        { key: 'narrator_female', label: '🎙️ Female Narrator' },
+        { key: 'narrator_male', label: '🎙️ Male Narrator' },
+        { key: 'hero_male', label: '👦 Hero / Young Male' },
+        { key: 'heroine_female', label: '👧 Heroine / Young Female' },
+        { key: 'elder_male', label: '👴 Elder Male' },
+        { key: 'elder_female', label: '👵 Elder Female' },
+        { key: 'villain_male', label: '🦹 Villain / Boss' },
+        { key: 'child', label: '👶 Child' },
+        { key: 'soft_female', label: '🌸 Soft Female' },
+    ];
+
+    currentReviewSegments.forEach((seg, idx) => {
+        const row = document.createElement('div');
+        row.className = 'p-3 rounded-lg bg-[#0e0e15] border border-[#20202c] space-y-2';
+
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between text-[11px] text-[#888]';
+        const startSec = (parseFloat(seg.start) || 0).toFixed(1);
+        const endSec = (parseFloat(seg.end) || 0).toFixed(1);
+        header.innerHTML = `<span class="font-bold text-amber-400">Line #${seg.id || idx+1}</span> <span class="font-mono bg-[#181824] px-1.5 py-0.5 rounded border border-[#2a2a3c]">${startSec}s → ${endSec}s</span>`;
+        row.appendChild(header);
+
+        if (seg.source) {
+            const orig = document.createElement('p');
+            orig.className = 'text-[11px] text-[#888] italic px-1 bg-[#14141e] p-1.5 rounded border border-[#1e1e2c]';
+            orig.textContent = seg.source;
+            row.appendChild(orig);
+        }
+
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'flex flex-col sm:flex-row gap-2';
+
+        const textInput = document.createElement('textarea');
+        textInput.className = 'input text-xs flex-1 py-1.5 px-2.5 resize-none leading-relaxed font-medium review-line-input';
+        textInput.rows = 2;
+        textInput.value = seg.text || '';
+        textInput.dataset.idx = idx;
+        inputGroup.appendChild(textInput);
+
+        const voiceSelect = document.createElement('select');
+        voiceSelect.className = 'input text-xs py-1.5 px-2 sm:w-48 shrink-0 review-voice-input';
+        voiceSelect.dataset.idx = idx;
+        voiceOptions.forEach(vo => {
+            const opt = document.createElement('option');
+            opt.value = vo.key;
+            opt.textContent = vo.label;
+            if (seg.voice === vo.key) opt.selected = true;
+            voiceSelect.appendChild(opt);
+        });
+        inputGroup.appendChild(voiceSelect);
+
+        row.appendChild(inputGroup);
+        container.appendChild(row);
+    });
+}
+
+async function confirmScriptReview() {
+    const textInputs = document.querySelectorAll('.review-line-input');
+    const voiceInputs = document.querySelectorAll('.review-voice-input');
+    const edits = [];
+    textInputs.forEach(ti => {
+        const idx = parseInt(ti.dataset.idx);
+        const seg = currentReviewSegments[idx];
+        const newText = ti.value.trim();
+        const newVoice = voiceInputs[idx]?.value || seg.voice;
+        edits.push({
+            id: seg.id || (idx + 1),
+            text: newText,
+            voice: newVoice
+        });
+    });
+
+    try {
+        const r = await fetch('/api/pipeline-review-confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                job_id: currentReviewJobId,
+                segments: edits
+            })
+        });
+        const res = await r.json();
+        if (res.success) {
+            closeScriptReviewModal();
+        } else {
+            alert(res.error || 'Failed to confirm review');
+        }
+    } catch (e) {
+        alert('Confirmation error: ' + e.message);
+    }
+}
+
+async function skipScriptReview() {
+    try {
+        await fetch('/api/pipeline-review-confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                job_id: currentReviewJobId,
+                segments: []
+            })
+        });
+        closeScriptReviewModal();
+    } catch (_) {
+        closeScriptReviewModal();
+    }
+}
+
+// =============================================================================
+// CHARACTER GLOSSARY & PRONUNCIATION DICTIONARY
+// =============================================================================
+let currentGlossary = {};
+
+async function openGlossaryModal() {
+    await loadGlossary();
+    document.getElementById('glossaryModal').classList.remove('hidden');
+}
+
+function closeGlossaryModal() {
+    document.getElementById('glossaryModal').classList.add('hidden');
+}
+
+async function loadGlossary() {
+    try {
+        const r = await fetch('/api/glossary');
+        const d = await r.json();
+        currentGlossary = d.glossary || {};
+        updateGlossaryBadge();
+        renderGlossaryUI();
+    } catch (_) {}
+}
+
+function updateGlossaryBadge() {
+    const count = Object.keys(currentGlossary).length;
+    const badge = document.getElementById('glossaryCountBadge');
+    if (badge) badge.textContent = count;
+    const summary = document.getElementById('glossarySummaryText');
+    if (summary) summary.textContent = count + ' terms configured';
+}
+
+function renderGlossaryUI() {
+    const container = document.getElementById('glossaryListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    const keys = Object.keys(currentGlossary);
+    if (keys.length === 0) {
+        container.innerHTML = '<p class="text-xs text-[#666] text-center py-4">No custom character names added yet.</p>';
+        return;
+    }
+    keys.forEach(term => {
+        const rep = currentGlossary[term];
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between p-2 rounded bg-[#0d0d14] border border-[#20202c] text-xs';
+        row.innerHTML = `
+            <div class="flex items-center gap-2 overflow-hidden">
+                <span class="font-bold text-white">${escapeHtml(term)}</span>
+                <span class="text-[#666]">→</span>
+                <span class="text-amber-400 font-medium">${escapeHtml(rep)}</span>
+            </div>
+            <button type="button" class="text-xs text-[#777] hover:text-rose-400 px-2 py-0.5" onclick="removeGlossaryItem('${escapeHtml(term)}')">✕</button>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function addGlossaryItem() {
+    const termInput = document.getElementById('glossaryTermInput');
+    const repInput = document.getElementById('glossaryRepInput');
+    const term = termInput.value.trim();
+    const rep = repInput.value.trim();
+    if (!term || !rep) return alert('Please enter both source term and Khmer translation');
+    currentGlossary[term] = rep;
+    termInput.value = '';
+    repInput.value = '';
+    updateGlossaryBadge();
+    renderGlossaryUI();
+}
+
+function removeGlossaryItem(term) {
+    if (term in currentGlossary) {
+        delete currentGlossary[term];
+        updateGlossaryBadge();
+        renderGlossaryUI();
+    }
+}
+
+async function saveGlossaryModal() {
+    try {
+        const r = await fetch('/api/glossary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ glossary: currentGlossary })
+        });
+        const d = await r.json();
+        if (d.success) {
+            updateGlossaryBadge();
+            closeGlossaryModal();
+        } else {
+            alert(d.error || 'Failed to save glossary');
+        }
+    } catch (e) {
+        alert('Save glossary error: ' + e.message);
+    }
+}
+
+// =============================================================================
+// OVERNIGHT SEQUENTIAL BATCH QUEUE
+// =============================================================================
+let currentBatchQueue = [];
+let isQueueWorkerRunning = false;
+
+async function openBatchQueueModal() {
+    await refreshBatchQueueUI();
+    document.getElementById('batchQueueModal').classList.remove('hidden');
+}
+
+function closeBatchQueueModal() {
+    document.getElementById('batchQueueModal').classList.add('hidden');
+}
+
+async function refreshBatchQueueUI() {
+    try {
+        const r = await fetch('/api/batch-queue');
+        const d = await r.json();
+        currentBatchQueue = d.queue || [];
+        isQueueWorkerRunning = !!d.is_running;
+
+        const badge = document.getElementById('queueBadge');
+        if (badge) badge.textContent = currentBatchQueue.length;
+
+        const pill = document.getElementById('queueRunningPill');
+        if (pill) {
+            if (isQueueWorkerRunning) pill.classList.remove('hidden');
+            else pill.classList.add('hidden');
+        }
+
+        renderQueueList();
+    } catch (_) {}
+}
+
+function renderQueueList() {
+    const container = document.getElementById('queueListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    if (currentBatchQueue.length === 0) {
+        container.innerHTML = '<p class="text-xs text-[#666] text-center py-6">The queue is currently empty. Add projects from Step 4.</p>';
+        return;
+    }
+
+    currentBatchQueue.forEach(task => {
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-lg bg-[#0e0e15] border border-[#20202c] flex items-center justify-between gap-3 text-xs';
+        
+        let statusBadge = '<span class="text-[10px] bg-amber-950/80 text-amber-400 px-2 py-0.5 rounded border border-amber-800">Pending</span>';
+        if (task.status === 'processing') {
+            statusBadge = '<span class="text-[10px] bg-blue-950/80 text-blue-400 px-2 py-0.5 rounded border border-blue-800 animate-pulse">Processing...</span>';
+        } else if (task.status === 'completed') {
+            statusBadge = '<span class="text-[10px] bg-emerald-950/80 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800">Completed ✓</span>';
+        } else if (task.status === 'error') {
+            statusBadge = `<span class="text-[10px] bg-rose-950/80 text-rose-400 px-2 py-0.5 rounded border border-rose-800" title="${escapeHtml(task.error || '')}">Error</span>`;
+        }
+
+        const opts = task.options || {};
+        const meta = [
+            opts.aspect_ratio || '16:9',
+            opts.voice_key || 'narrator',
+            opts.dubbing_mode || 'duck'
+        ].join(' · ');
+
+        card.innerHTML = `
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="font-bold text-white truncate">${escapeHtml(task.job_name || 'Job')}</span>
+                    ${statusBadge}
+                </div>
+                <div class="text-[11px] text-[#777] font-mono">${meta} · <span class="text-[#555]">${task.created_at || ''}</span></div>
+            </div>
+            <button type="button" class="btn btn-ghost text-xs text-[#666] hover:text-rose-400 px-2 py-1" onclick="removeBatchQueueTask('${task.id}')">✕</button>
+        `;
+        container.appendChild(card);
+    });
+}
+
+async function addToBatchQueue() {
+    const bgmVol = (parseFloat(document.getElementById('bgmVolumeSlider').value) / 100).toFixed(2);
+    const voiceVol = (parseFloat(document.getElementById('voiceVolumeSlider').value) / 100).toFixed(2);
+    const logoEnabled = document.getElementById('autoLogoEnabled')?.checked || false;
+    const logoPos = document.getElementById('autoLogoPos')?.value || 'top-right';
+    const logoSize = document.getElementById('autoLogoSize')?.value || 'medium';
+    const logoOpacity = ((parseFloat(document.getElementById('autoLogoOpacity')?.value || 85)) / 100).toFixed(2);
+    const aspectRatio = document.getElementById('autoAspectRatio')?.value || 'original';
+
+    if (currentSourceMode === 'file') {
+        if (!selectedAutoClips || selectedAutoClips.length === 0) {
+            return alert('Please upload or drag & drop at least one video file first');
+        }
+        const form = new FormData();
+        for (const clip of selectedAutoClips) {
+            form.append('videos', clip);
+        }
+        form.append('sourceLang', document.getElementById('autoLang').value);
+        form.append('translateEngine', document.getElementById('autoEngine').value);
+        form.append('translateStyle', document.getElementById('autoStyle').value);
+        form.append('dubbingMode', document.getElementById('autoDubMode').value);
+        form.append('voice', document.getElementById('autoVoice').value);
+        form.append('rate', document.getElementById('autoSpeechRate').value);
+        form.append('jobName', (document.getElementById('autoJobName').value || '').trim());
+        form.append('bgmVolume', bgmVol);
+        form.append('voiceVolume', voiceVol);
+        form.append('burnSubs', document.getElementById('autoBurnSubs').checked ? 'true' : 'false');
+        form.append('subBox', document.getElementById('autoSubBox').checked ? 'true' : 'false');
+        form.append('bilingualSubs', document.getElementById('autoBilingual').checked ? 'true' : 'false');
+        form.append('autoDetectVoice', document.getElementById('autoDetectVoice').checked ? 'true' : 'false');
+        form.append('subColor', document.getElementById('autoSubColor').value);
+        form.append('subSize', document.getElementById('autoSubSize').value);
+        form.append('aspectRatio', aspectRatio);
+        form.append('logoEnabled', logoEnabled ? 'true' : 'false');
+        form.append('logoPos', logoPos);
+        form.append('logoSize', logoSize);
+        form.append('logoOpacity', logoOpacity);
+
+        try {
+            const r = await fetch('/api/batch-queue/add', { method: 'POST', body: form });
+            const d = await r.json();
+            if (d.success) {
+                alert('✓ Project successfully added to Overnight Batch Queue!');
+                refreshBatchQueueUI();
+            } else {
+                alert(d.error || 'Failed to add to queue');
+            }
+        } catch (e) {
+            alert('Queue error: ' + e.message);
+        }
+    } else {
+        const url = document.getElementById('autoUrlInput').value.trim();
+        if (!url) return alert('Please enter a YouTube or web video link');
+        const payload = {
+            url: url,
+            job_name: (document.getElementById('autoJobName').value || '').trim(),
+            options: {
+                source_lang: document.getElementById('autoLang').value,
+                translate_engine: document.getElementById('autoEngine').value,
+                translate_style: document.getElementById('autoStyle').value,
+                dubbing_mode: document.getElementById('autoDubMode').value,
+                voice_key: document.getElementById('autoVoice').value,
+                bgm_volume: parseFloat(bgmVol),
+                voice_volume: parseFloat(voiceVol),
+                burn_subs: document.getElementById('autoBurnSubs').checked,
+                sub_box: document.getElementById('autoSubBox').checked,
+                bilingual_subs: document.getElementById('autoBilingual').checked,
+                auto_detect_voice: document.getElementById('autoDetectVoice').checked,
+                sub_color: document.getElementById('autoSubColor').value,
+                sub_size: parseInt(document.getElementById('autoSubSize').value),
+                aspect_ratio: aspectRatio,
+                logo_enabled: logoEnabled,
+                logo_pos: logoPos,
+                logo_size: logoSize,
+                logo_opacity: parseFloat(logoOpacity)
+            }
+        };
+        try {
+            const r = await fetch('/api/batch-queue/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const d = await r.json();
+            if (d.success) {
+                alert('✓ URL project added to Overnight Batch Queue!');
+                refreshBatchQueueUI();
+            } else {
+                alert(d.error || 'Failed to add to queue');
+            }
+        } catch (e) {
+            alert('Queue error: ' + e.message);
+        }
+    }
+}
+
+async function removeBatchQueueTask(id) {
+    try {
+        await fetch('/api/batch-queue/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        });
+        refreshBatchQueueUI();
+    } catch (_) {}
+}
+
+async function clearCompletedQueue() {
+    try {
+        await fetch('/api/batch-queue/clear', { method: 'POST' });
+        refreshBatchQueueUI();
+    } catch (_) {}
+}
+
+async function startBatchQueueWorker() {
+    try {
+        const r = await fetch('/api/batch-queue/start', { method: 'POST' });
+        const d = await r.json();
+        refreshBatchQueueUI();
+    } catch (_) {}
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function loadConfigDefaults() {
+    await loadAllVoicesIntoSelects();
+    try {
+        const r = await fetch('/config');
+        const c = await r.json();
+        if (c.default_translate_engine && document.getElementById('autoEngine')) {
+            document.getElementById('autoEngine').value = c.default_translate_engine;
+        }
+        if (c.default_translate_style && document.getElementById('autoStyle')) {
+            document.getElementById('autoStyle').value = c.default_translate_style;
+        }
+        if (c.default_dubbing_mode && document.getElementById('autoDubMode')) {
+            document.getElementById('autoDubMode').value = c.default_dubbing_mode;
+        }
+        if (c.default_voice && document.getElementById('autoVoice')) {
+            document.getElementById('autoVoice').value = c.default_voice;
+        }
+        if (c.sub_color && document.getElementById('autoSubColor')) {
+            document.getElementById('autoSubColor').value = c.sub_color;
+        }
+        if (c.sub_size && document.getElementById('autoSubSize')) {
+            document.getElementById('autoSubSize').value = c.sub_size;
+        }
+        if (c.default_aspect_ratio && document.getElementById('autoAspectRatio')) {
+            document.getElementById('autoAspectRatio').value = c.default_aspect_ratio;
+            onAspectRatioChange();
+        }
+
+        // Logo configuration
+        if (c.logo_exists) {
+            hasSavedLogo = true;
+            window._logoTs = Date.now();
+            const thumbImg = document.getElementById('logoThumbImg');
+            const placeholder = document.getElementById('logoThumbPlaceholder');
+            if (thumbImg) {
+                thumbImg.src = '/logo-preview?t=' + window._logoTs;
+                thumbImg.classList.remove('hidden');
+            }
+            if (placeholder) placeholder.classList.add('hidden');
+            const statusEl = document.getElementById('logoStatusText');
+            if (statusEl) statusEl.textContent = 'Active Channel Watermark';
+            const badge = document.getElementById('savedLogoBadge');
+            if (badge) badge.classList.remove('hidden');
+            const btnRemove = document.getElementById('btnRemoveLogo');
+            if (btnRemove) btnRemove.classList.remove('hidden');
+        }
+        if (typeof c.logo_enabled !== 'undefined' && document.getElementById('autoLogoEnabled')) {
+            document.getElementById('autoLogoEnabled').checked = !!c.logo_enabled;
+        }
+        if (c.logo_pos && document.getElementById('autoLogoPos')) {
+            document.getElementById('autoLogoPos').value = c.logo_pos;
+        }
+        if (c.logo_size && document.getElementById('autoLogoSize')) {
+            document.getElementById('autoLogoSize').value = c.logo_size;
+        }
+        if (typeof c.logo_opacity !== 'undefined' && document.getElementById('autoLogoOpacity')) {
+            const opVal = Math.round(parseFloat(c.logo_opacity) * 100);
+            document.getElementById('autoLogoOpacity').value = opVal;
+            const opDisplay = document.getElementById('logoOpacityDisplay');
+            if (opDisplay) opDisplay.textContent = opVal + '%';
+        }
+        toggleLogoSection();
+    } catch (_) {}
+    updateLiveSubPreview();
+    updateLiveLogoPreview();
+    loadRecentHistory();
+    loadGlossary();
+    refreshBatchQueueUI();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    loadConfigDefaults();
+});
+</script>
+</body>
+</html>

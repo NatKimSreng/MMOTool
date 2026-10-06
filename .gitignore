@@ -1,0 +1,63 @@
+# media & generated files
+*.mp4
+*.mkv
+*.mov
+*.webm
+*.avi
+*.part
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.ogg
+*.flac
+*.srt
+outputs/
+uploads/
+downloads/
+logs/
+cloned_voices/
+
+# builds & third-party sources
+*.exe
+build/
+dist/
+*.spec
+ffmpeg-*/
+
+# backups
+*.bak*
+templates_bak_before_tasks/
+
+# local settings & state (config.json may hold API keys)
+config.json
+cloned_voices.json
+history.json
+tasks.json
+batch_queue.json
+
+# python / editor
+__pycache__/
+*.pyc
+.venv/
+venv/
+.claude/settings.local.json
+
+# AI model weights & caches (too big for GitHub — download separately)
+tools/models/
+tools/hf-cache/
+tools/seed-vc/
+*.pth
+*.pt
+*.bin
+*.safetensors
+*.onnx
+tools/vc-env/
+*-env/
+env/
+
+# tools/: only our own scripts (envs, wheels, caches, models stay local)
+tools/*
+!tools/*.py
+!tools/*.bat
+!tools/seed-vc-code/
