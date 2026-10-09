@@ -13,6 +13,7 @@ from datetime import datetime
 import uuid
 import yt_dlp
 from .core import (
+    _strip_foreign_script,
     DEFAULT_OUTPUT_FOLDER,
     UPLOAD_FOLDER,
     _MEDIA_EXT,
@@ -284,6 +285,8 @@ def pipeline_cn_en_to_khmer_task(
             ck.pop("translate_partial", None)
             _save_checkpoint(job_dir, ck)
 
+        for s in km_segments:
+            s["text"] = _strip_foreign_script(s.get("text", ""))
         km_srt = os.path.join(job_dir, "02_khmer.srt")
         _write_srt(km_srt, km_segments)
         n_kh = sum(1 for s in km_segments if _has_khmer(s.get("text", "")))
@@ -365,7 +368,7 @@ def pipeline_cn_en_to_khmer_task(
                             idx = int(item.get("id", 0)) - 1
                             if 0 <= idx < len(km_segments):
                                 if "text" in item and item["text"] is not None:
-                                    km_segments[idx]["text"] = str(item["text"]).strip()
+                                    km_segments[idx]["text"] = _strip_foreign_script(str(item["text"]))
                                 if "voice" in item and item["voice"]:
                                     km_segments[idx]["voice"] = str(item["voice"]).strip()
                         _write_srt(km_srt, km_segments)

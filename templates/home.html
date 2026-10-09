@@ -141,6 +141,8 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .track{height:10px;border-radius:10px;background:var(--panel2);overflow:hidden;border:1px solid var(--line)}
 .fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#ffcf6b);transition:width .5s}
 .pmeta{display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-size:13.5px;color:var(--muted);flex-wrap:wrap}
+.warn-list{margin-top:10px;padding:8px 12px;border-radius:10px;font-size:12.5px;line-height:1.5;border:1px solid rgba(245,166,35,.45);background:rgba(245,166,35,.08);color:var(--text);word-break:break-word}
+.warn-list b{color:#f5a623}
 .status-line{margin-top:14px;padding:10px 12px;background:var(--panel2);border-radius:10px;font-size:13.5px;border:1px solid var(--line);word-break:break-word}
 
 /* review */
@@ -509,7 +511,6 @@ main>section,aside{min-width:0}
                   <option value="auto">Detect automatically</option>
                   <option value="zh">Chinese</option>
                   <option value="en">English</option>
-                  <option value="th">Thai</option>
                   <option value="vi">Vietnamese</option>
                   <option value="ja">Japanese</option>
                   <option value="ko">Korean</option>
@@ -557,6 +558,7 @@ main>section,aside{min-width:0}
       <div class="track"><div class="fill" id="pFill"></div></div>
       <div class="pmeta"><span id="pPct">0%</span><span id="pTime"></span></div>
       <div class="status-line" id="pStatus">Starting…</div>
+      <div class="warn-list hidden" id="pWarn"></div>
       <div class="actions">
         <button type="button" class="btn primary" onclick="dubAnother()">＋ Dub another video</button>
         <button type="button" class="btn" id="pauseBtn" onclick="pauseTask()" title="Stops now and saves what is done — resume later from Tasks">⏸ Pause &amp; save</button>
@@ -590,6 +592,7 @@ main>section,aside{min-width:0}
     <div id="errorView" class="card hidden">
       <h2 id="eTitle" style="color:var(--bad)">Something went wrong</h2>
       <div class="status-line" id="eText"></div>
+      <div class="warn-list hidden" id="eWarn"></div>
       <p class="sub" id="eHint" style="margin-top:12px">Check your API keys in Settings, or try again. Your settings are kept.</p>
       <div class="actions">
         <button type="button" class="btn primary hidden" id="eResume" onclick="resumeTask()">▶ Resume</button>
@@ -965,6 +968,7 @@ function showPaused(p){
   $('eTitle').textContent = failed ? 'Something went wrong' : closed ? 'Paused — the app was closed' : 'Paused';
   $('eTitle').style.color = failed ? 'var(--bad)' : 'var(--text)';
   $('eText').textContent = String(p.status || '').replace(/^Error:\s*/, '');
+  renderWarnings('eWarn', p);
   $('eHint').textContent = p.resumable
     ? 'Everything finished so far is saved. Resume continues from there — no need to upload again.'
     : 'Check your API keys in Settings, or try again. Your settings are kept.';
@@ -1011,6 +1015,12 @@ function showProgress(){ showOnly('progressView'); }
 function fmtDur(sec){ sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = sec%60;
   return h ? `${h}h ${m}m` : m ? `${m}m ${String(s).padStart(2,'0')}s` : `${s}s`; }
 
+// steps that failed and were skipped (fallbacks) — why a job is slow or used another engine
+function renderWarnings(id, p){
+  const w = p.warnings || [];
+  $(id).classList.toggle('hidden', !w.length);
+  $(id).innerHTML = w.length ? '<b>⚠ Skipped / fell back:</b><br>' + w.map(x => '• ' + esc(x)).join('<br>') : '';
+}
 function renderProgress(p){
   const pct = Math.max(0, Math.min(100, p.percent || 0));
   $('pauseBtn').disabled = !!p.stop_requested; $('pauseBtn').textContent = p.stop_requested ? 'Pausing…' : '⏸ Pause & save';
@@ -1020,6 +1030,7 @@ function renderProgress(p){
   $('stages').innerHTML = STAGES.map((s,i) => `<div class="stage ${i<cur?'done':i===cur?'now':''}"><div class="dot">${i<cur?'✓':s.ic}</div>${s.t}</div>`).join('');
   $('pFill').style.width = pct + '%'; $('pPct').textContent = pct + '%';
   $('pStatus').textContent = p.status || '';
+  renderWarnings('pWarn', p);
   if (p.started_at) {
     const el = Date.now()/1000 - p.started_at;
     let t = 'Running for ' + fmtDur(el);

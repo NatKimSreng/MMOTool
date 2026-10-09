@@ -220,6 +220,7 @@ def get_config():
         "logo_opacity": cfg.get("logo_opacity", 0.85),
         "glossary": cfg.get("glossary", {}),
         "default_aspect_ratio": cfg.get("default_aspect_ratio", "original"),
+        "download_cookies_file": cfg.get("download_cookies_file", ""),
         "config_path": CONFIG_FILE,
         "config_exists": os.path.exists(CONFIG_FILE),
         "keys_path": SECRETS_FILE,
@@ -237,7 +238,7 @@ def set_config():
         "default_translate_style", "default_dubbing_mode", "default_voice",
         "tts_voice", "tts_rate", "sub_color", "sub_size", "studio_cinema_dsp",
         "role_voice_map", "logo_path", "logo_enabled", "logo_pos", "logo_size",
-        "logo_opacity", "glossary", "default_aspect_ratio"
+        "logo_opacity", "glossary", "default_aspect_ratio", "download_cookies_file"
     ):
         if key in data:
             updates[key] = data[key]

@@ -389,6 +389,7 @@
                     <span id="progressStatus" class="text-white font-medium">Initializing AI engine...</span>
                     <span id="progressHint" class="text-[#777] text-[11px]">Processing locally &amp; in cloud</span>
                 </div>
+                <div id="progressWarn" class="text-[11px] text-amber-300 mt-2 p-2 rounded border border-amber-500/30 bg-amber-500/5 break-words hidden"></div>
                 <p id="progressResult" class="text-xs text-emerald-400 mt-3 pt-2 border-t border-[#23232f] hidden font-mono break-all"></p>
                 <button id="progressOpenFolder" class="btn btn-ghost text-xs py-1.5 px-3 mt-2 text-white hidden">📁 Open in Explorer</button>
             </div>
@@ -678,7 +679,6 @@
                                     <option value="auto" selected>🌐 Auto Detect Spoken</option>
                                     <option value="zh">Chinese 中文 (Dramas / ShortMax)</option>
                                     <option value="en">English (Movies / Tech)</option>
-                                    <option value="th">Thai ภาษาไทย</option>
                                     <option value="vi">Vietnamese Tiếng Việt</option>
                                     <option value="ja">Japanese 日本語</option>
                                     <option value="ko">Korean 한국어</option>
@@ -953,7 +953,6 @@
                                 <option value="auto">Auto detect</option>
                                 <option value="zh">Chinese 中文</option>
                                 <option value="en">English</option>
-                                <option value="th">Thai</option>
                                 <option value="vi">Vietnamese</option>
                                 <option value="ja">Japanese</option>
                                 <option value="ko">Korean</option>
@@ -1174,7 +1173,41 @@
                     <p class="text-xs text-[#888] mb-4">Download videos from YouTube, TikTok, Facebook, Douyin, Bilibili.</p>
 
                     <label class="label">Video URL</label>
-                    <input type="url" id="ytUrl" placeholder="https://..." class="input mb-5 font-mono text-xs">
+                    <div class="flex gap-2 mb-3">
+                        <input type="url" id="ytUrl" placeholder="https://www.bilibili.com/bangumi/play/ss... or /video/BV..." class="input flex-1 font-mono text-xs"
+                               onkeydown="if (event.key === 'Enter') findYtItems()">
+                        <button class="btn btn-ghost whitespace-nowrap" id="btnYtFind" onclick="findYtItems()">🔍 Find episodes</button>
+                    </div>
+
+                    <div id="ytPlayerWrap" class="hidden mb-4">
+                        <div class="flex items-center justify-between mb-2 gap-2">
+                            <div id="ytPlayerTitle" class="text-xs text-white font-semibold truncate"></div>
+                            <button type="button" class="btn btn-ghost text-[10px] px-2 py-0.5 shrink-0" onclick="closeYtPreview()">✕ Close</button>
+                        </div>
+                        <video id="ytPlayer" controls playsinline class="w-full rounded bg-black max-h-[50vh]"></video>
+                        <audio id="ytPlayerAudio" preload="auto" class="hidden"></audio>
+                        <div id="ytPlayerMsg" class="text-[11px] text-[#888] mt-1">Preview is low quality (≤480p) — the download uses the quality you pick below.</div>
+                    </div>
+
+                    <div id="ytListWrap" class="hidden mb-4">
+                        <div class="flex items-center justify-between mb-2 gap-2">
+                            <div id="ytListTitle" class="text-xs text-white font-semibold truncate"></div>
+                            <div class="flex gap-1 shrink-0">
+                                <button type="button" class="btn btn-ghost text-[10px] px-2 py-0.5" onclick="ytSelectAll(true)">All</button>
+                                <button type="button" class="btn btn-ghost text-[10px] px-2 py-0.5" onclick="ytSelectAll(false)">None</button>
+                            </div>
+                        </div>
+                        <ul id="ytList" class="space-y-1 max-h-72 overflow-y-auto pr-1"></ul>
+                        <div class="text-[11px] text-[#888] mt-2"><span id="ytPickCount">0</span> selected</div>
+                    </div>
+
+                    <label class="label">Quality</label>
+                    <select id="ytQuality" class="input mb-5 text-xs">
+                        <option value="best" selected>Best available</option>
+                        <option value="1080">1080p</option>
+                        <option value="720">720p</option>
+                        <option value="480">480p (smaller files)</option>
+                    </select>
 
                     <button class="btn btn-primary w-full justify-center py-2.5 font-bold" id="btnYt" onclick="startYt()">
                         Download Video
@@ -1860,6 +1893,9 @@ async function pollUntilDone() {
                 const r = await fetch('/progress');
                 const p = await r.json();
                 document.getElementById('progressStatus').textContent = p.status || '';
+                const warns = p.warnings || [], wEl = document.getElementById('progressWarn');
+                wEl.classList.toggle('hidden', !warns.length);
+                wEl.innerHTML = warns.length ? '<b>⚠ Skipped / fell back:</b><br>' + warns.map(x => '• ' + escapeHtml(x)).join('<br>') : '';
                 const pct = p.percent || 0;
                 document.getElementById('progressPct').textContent = pct + '%';
                 document.getElementById('progressBar').style.width = pct + '%';
@@ -2174,11 +2210,129 @@ async function startCut() {
     setBusy('btnCut', false);
 }
 
+let ytItems = [], ytListUrl = '';
+
+function ytEsc(s) {
+    return String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function ytDur(sec) {
+    if (!sec) return '';
+    sec = Math.round(sec);
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+}
+
+async function findYtItems() {
+    const url = document.getElementById('ytUrl').value.trim();
+    if (!url) return alert('Enter URL');
+    const btn = document.getElementById('btnYtFind');
+    btn.disabled = true; btn.textContent = 'Searching…';
+    try {
+        const res = await fetch('/download-info', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        ytItems = data.items.map(it => ({ ...it, picked: true }));
+        ytListUrl = url;
+        document.getElementById('ytListTitle').textContent = data.title + ' — ' + ytItems.length + (ytItems.length > 1 ? ' episodes' : ' video');
+        renderYtList();
+        document.getElementById('ytListWrap').classList.remove('hidden');
+    } catch (e) {
+        alert('Could not read this link: ' + e.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '🔍 Find episodes';
+    }
+}
+
+function renderYtList() {
+    document.getElementById('ytList').innerHTML = ytItems.map((it, i) => `
+        <li class="flex items-center gap-2 text-xs text-[#ccc] bg-[#0c0c10] border border-[#23232f] rounded px-2.5 py-1.5 cursor-pointer" onclick="ytToggle(${i}, event)">
+            <input type="checkbox" ${it.picked ? 'checked' : ''} onclick="ytToggle(${i}, event)">
+            <span class="text-[#555] w-6 text-right font-mono">${it.index}</span>
+            <span class="flex-1 truncate" title="${ytEsc(it.title)}">${ytEsc(it.title)}</span>
+            ${it.badge ? `<span class="text-[10px] px-1.5 rounded bg-pink-500/20 text-pink-300">${ytEsc(it.badge)}</span>` : ''}
+            <span class="text-[#666] font-mono">${ytDur(it.duration)}</span>
+            <button type="button" class="btn btn-ghost text-[10px] px-2 py-0.5" title="Watch before downloading" onclick="event.stopPropagation(); previewYt(${i})">▶</button>
+        </li>`).join('');
+    const n = ytItems.filter(it => it.picked).length;
+    document.getElementById('ytPickCount').textContent = n;
+    document.getElementById('btnYt').textContent = n > 1 ? `Download ${n} Videos` : 'Download Video';
+}
+
+// Bilibili sends picture and sound as two streams: play the sound in a hidden <audio> kept in step
+let ytSyncOff = null;
+
+async function previewYt(i) {
+    const it = ytItems[i];
+    const wrap = document.getElementById('ytPlayerWrap');
+    const v = document.getElementById('ytPlayer'), a = document.getElementById('ytPlayerAudio');
+    const msg = document.getElementById('ytPlayerMsg');
+    closeYtPreview();
+    wrap.classList.remove('hidden');
+    document.getElementById('ytPlayerTitle').textContent = it.index + '. ' + it.title;
+    msg.textContent = 'Loading preview…';
+    try {
+        const res = await fetch('/download-preview', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: it.url })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        v.src = data.video;
+        if (data.audio) {
+            a.src = data.audio;
+            v.muted = true;
+            const on = {
+                play: () => { a.currentTime = v.currentTime; a.play().catch(() => {}); },
+                pause: () => a.pause(),
+                seeked: () => { a.currentTime = v.currentTime; },
+                waiting: () => a.pause(),
+                playing: () => { a.currentTime = v.currentTime; a.play().catch(() => {}); },
+                ratechange: () => { a.playbackRate = v.playbackRate; },
+                volumechange: () => { a.volume = v.volume; },
+                timeupdate: () => { if (Math.abs(a.currentTime - v.currentTime) > 0.3) a.currentTime = v.currentTime; },
+            };
+            Object.entries(on).forEach(([k, f]) => v.addEventListener(k, f));
+            ytSyncOff = () => Object.entries(on).forEach(([k, f]) => v.removeEventListener(k, f));
+        }
+        msg.textContent = 'Preview is low quality (≤480p) — the download uses the quality you pick below.';
+        v.play().catch(() => {});
+    } catch (e) {
+        msg.textContent = 'Cannot preview: ' + e.message;
+    }
+}
+
+function closeYtPreview() {
+    const v = document.getElementById('ytPlayer'), a = document.getElementById('ytPlayerAudio');
+    if (ytSyncOff) { ytSyncOff(); ytSyncOff = null; }
+    [v, a].forEach(m => { m.pause(); m.removeAttribute('src'); m.load(); });
+    v.muted = false;
+    document.getElementById('ytPlayerWrap').classList.add('hidden');
+}
+
+function ytToggle(i, ev) {
+    ev.stopPropagation();
+    ytItems[i].picked = !ytItems[i].picked;
+    renderYtList();
+}
+
+function ytSelectAll(on) {
+    ytItems.forEach(it => it.picked = on);
+    renderYtList();
+}
+
 async function startYt() {
     const url = document.getElementById('ytUrl').value.trim();
     if (!url) return alert('Enter URL');
     const form = new FormData();
     form.append('url', url);
+    form.append('quality', document.getElementById('ytQuality').value);
+    if (ytItems.length && ytListUrl === url) {
+        const picked = ytItems.filter(it => it.picked).map(it => it.url);
+        if (!picked.length) return alert('Tick at least one episode');
+        form.append('items', JSON.stringify(picked));
+    }
     showProgress('Downloading Video'); setBusy('btnYt', true);
     try {
         const res = await fetch('/download', { method: 'POST', body: form });

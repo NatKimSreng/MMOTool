@@ -8,6 +8,7 @@ from .core import (
     VC_DIR,
     VC_PYTHON,
     _BASE_DIR,
+    _strip_foreign_script,
     format_timestamp,
     load_config,
 )
@@ -41,7 +42,7 @@ def parse_srt_blocks(srt_path):
         left, right = time_line.split("-->")
         start = _srt_time_to_sec(left.strip())
         end = _srt_time_to_sec(right.strip())
-        text = text.strip()
+        text = _strip_foreign_script(text).strip()
         if text:
             blocks.append({"start": start, "end": end, "text": text})
     return blocks
@@ -65,11 +66,14 @@ def _srt_time_to_sec(t):
 # ═══════════════════════════════════════════════════════════
 
 def _write_srt(path, segments):
+    # a line that was only Thai is left out instead of written as an empty subtitle
+    segments = [{**s, "text": _strip_foreign_script(s["text"]).strip()} for s in segments]
+    segments = [s for s in segments if s["text"]]
     with open(path, "w", encoding="utf-8") as f:
         for i, seg in enumerate(segments, start=1):
             f.write(
                 f"{i}\n{format_timestamp(seg['start'])} --> {format_timestamp(seg['end'])}\n"
-                f"{seg['text'].strip()}\n\n"
+                f"{seg['text']}\n\n"
             )
 
 
@@ -240,7 +244,10 @@ def _separate_background_demucs(media_path, work_dir, progress_cb=None):
     import subprocess
     import sys
     import glob
+    import re
     import shutil
+    import threading
+    import time
     cfg = load_config()
     py = sys.executable
     env = dict(os.environ)
@@ -256,12 +263,24 @@ def _separate_background_demucs(media_path, work_dir, progress_cb=None):
     if not has_cuda and not cfg.get("demucs_allow_cpu", False):
         return None
 
+    out = os.path.join(work_dir, "background_no_vocals.wav")
+    # The background never changes for the same movie: reuse it (re-voicing lines re-mixes)
+    stamp_file = out + ".src"
+    src_stamp = f"{os.path.abspath(media_path)}|{os.path.getsize(media_path)}|{int(os.path.getmtime(media_path))}"
+    try:
+        if os.path.isfile(out) and os.path.getsize(out) > 0:
+            with open(stamp_file, encoding="utf-8") as f:
+                if f.read() == src_stamp:
+                    return out
+    except OSError:
+        pass
+
     sep_dir = os.path.join(work_dir, "_demucs")
     os.makedirs(sep_dir, exist_ok=True)
     dur = _get_media_duration(media_path) or 600
     try:
         if progress_cb:
-            progress_cb("Removing original voices (Demucs AI)…")
+            progress_cb("Removing original voices (Demucs AI) — preparing audio…")
         # 10-minute chunks keep RAM / VRAM use low on long movies
         r = subprocess.run(
             ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", media_path, "-vn",
@@ -272,13 +291,43 @@ def _separate_background_demucs(media_path, work_dir, progress_cb=None):
         chunks = sorted(glob.glob(os.path.join(sep_dir, "chunk_*.wav")))
         if r.returncode != 0 or not chunks:
             return None
-        r = subprocess.run(
-            [py, "-m", "demucs", "--two-stems", "vocals", "-n", "htdemucs",
+        # One process for all chunks (model loads once); its progress bar is read live
+        env["PYTHONUNBUFFERED"] = "1"
+        proc = subprocess.Popen(
+            [py, "-m", "demucs", "--two-stems", "vocals", "-n", "htdemucs", "--overlap", "0.1",
              "-d", "cuda" if has_cuda else "cpu", "-o", sep_dir, *chunks],
-            capture_output=True, timeout=max(1800, int(dur * (1 if has_cuda else 3))), env=env,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env,
         )
-        if r.returncode != 0:
-            print(f"[demucs failed]: {(r.stderr or b'').decode('utf-8', errors='ignore')[-400:]}")
+        killer = threading.Timer(max(1800, int(dur * (1 if has_cuda else 3))), proc.kill)
+        killer.start()
+        tail, buf, idx, t0, last = "", b"", 0, time.time(), 0.0
+        try:
+            while True:
+                data = proc.stdout.read1(4096) if hasattr(proc.stdout, "read1") else proc.stdout.read(4096)
+                if not data:
+                    break
+                buf += data
+                *lines, buf = re.split(rb"[\r\n]", buf)
+                for ln in lines:
+                    s = ln.decode("utf-8", errors="ignore")
+                    if not s.strip():
+                        continue
+                    tail = (tail + "\n" + s)[-400:]
+                    if s.startswith("Separating track"):
+                        idx += 1
+                    m = re.match(r"\s*(\d+)%\|", s)
+                    if m and progress_cb and time.time() - last > 1.0:
+                        last = time.time()
+                        done = (max(idx, 1) - 1 + int(m.group(1)) / 100) / len(chunks)
+                        eta = (time.time() - t0) / done * (1 - done) if done > 0.02 else 0
+                        progress_cb(f"Removing original voices (Demucs AI) — {done * 100:.0f}%"
+                                    f" (part {max(idx, 1)}/{len(chunks)})"
+                                    + (f", about {eta / 60:.0f} min left" if eta >= 60 else ""))
+            proc.wait()
+        finally:
+            killer.cancel()
+        if proc.returncode != 0:
+            print(f"[demucs failed]: {tail}")
             return None
         parts = []
         for c in chunks:
@@ -290,13 +339,16 @@ def _separate_background_demucs(media_path, work_dir, progress_cb=None):
         with open(list_file, "w", encoding="utf-8") as f:
             for pth in parts:
                 f.write("file '" + pth.replace(chr(92), "/").replace("'", "'" + chr(92) + "''") + "'\n")
-        out = os.path.join(work_dir, "background_no_vocals.wav")
         r = subprocess.run(
             ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
              "-i", list_file, "-c", "copy", out],
             capture_output=True, timeout=600,
         )
-        return out if r.returncode == 0 and os.path.isfile(out) else None
+        if r.returncode != 0 or not os.path.isfile(out):
+            return None
+        with open(stamp_file, "w", encoding="utf-8") as f:
+            f.write(src_stamp)
+        return out
     except Exception as e:
         print(f"[demucs]: {e}")
         return None
@@ -362,8 +414,10 @@ def _get_fastest_video_encoder():
         return _FAST_ENCODER_CACHE
     import subprocess
     candidates = [
-        ("h264_nvenc", ["-preset", "p5", "-rc", "vbr", "-cq", "23", "-b:v", "0", "-maxrate", "8M", "-bufsize", "16M"]),
-        ("h264_qsv", ["-preset", "medium", "-global_quality", "23", "-maxrate", "8M", "-bufsize", "16M"]),
+        ("h264_nvenc", ["-preset", "p3", "-rc", "vbr", "-cq", "23", "-b:v", "0", "-maxrate", "8M", "-bufsize", "16M"]),
+        # Intel low-power mode encodes ~20% faster than the normal QSV path; not every chip has it
+        ("h264_qsv", ["-preset", "veryfast", "-low_power", "1", "-global_quality", "23", "-maxrate", "8M", "-bufsize", "16M"]),
+        ("h264_qsv", ["-preset", "veryfast", "-global_quality", "23", "-maxrate", "8M", "-bufsize", "16M"]),
         ("h264_mf", ["-b:v", "4500k", "-rate_control", "quality", "-quality", "70"]),
     ]
     for enc, args in candidates:
@@ -371,7 +425,10 @@ def _get_fastest_video_encoder():
             # 320x240: some hardware encoders reject tiny test frames
             cmd = ["ffmpeg", "-hide_banner", "-f", "lavfi", "-i", "testsrc=duration=0.2:size=320x240:rate=30",
                    "-c:v", enc, *args, "-f", "null", "-"]
-            p = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+            p = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=15)
+            if p.returncode != 0 and enc == "h264_nvenc" and b"driver" in (p.stderr or b"").lower():
+                print("[Hardware Acceleration]: NVIDIA GPU found but its driver is too old for this ffmpeg"
+                      " - update the NVIDIA driver to use the much faster NVENC encoder")
             if p.returncode == 0:
                 _FAST_ENCODER_CACHE = (enc, args)
                 print(f"[Hardware Acceleration]: Using {enc} hardware video encoder")
@@ -731,17 +788,21 @@ def _mux_video_with_audio(
 
 def _write_bilingual_srt(path, km_segments, src_segments):
     """Write bilingual SRT: Khmer line first, original language line second."""
+    n = 0
     with open(path, "w", encoding="utf-8") as f:
-        for i, km in enumerate(km_segments, start=1):
+        for i, km in enumerate(km_segments):
             st = format_timestamp(km["start"])
             et = format_timestamp(km["end"])
-            km_text = km.get("text", "").strip()
-            src_text = src_segments[i-1].get("text", "").strip() if i-1 < len(src_segments) else ""
+            km_text = _strip_foreign_script(km.get("text", "")).strip()
+            src_text = _strip_foreign_script(src_segments[i].get("text", "")).strip() if i < len(src_segments) else ""
             if src_text and src_text != km_text:
-                combined = f"{km_text}\n{src_text}"
+                combined = f"{km_text}\n{src_text}".strip()
             else:
                 combined = km_text
-            f.write(f"{i}\n{st} --> {et}\n{combined}\n\n")
+            if not combined:
+                continue
+            n += 1
+            f.write(f"{n}\n{st} --> {et}\n{combined}\n\n")
 
 
 def _khmer_font_path():

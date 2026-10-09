@@ -23,7 +23,13 @@ sys.path.insert(0, HERE)
 
 # ── no console: send output to a log file ─────────────────────
 os.makedirs(LOG_DIR, exist_ok=True)
-_log = open(os.path.join(LOG_DIR, "dubber.log"), "a", encoding="utf-8", buffering=1)
+_log_path = os.path.join(LOG_DIR, "dubber.log")
+try:   # keep one previous log; a single file used to grow to hundreds of MB
+    if os.path.getsize(_log_path) > 5 * 1024 * 1024:
+        os.replace(_log_path, os.path.join(LOG_DIR, "dubber.old.log"))
+except OSError:
+    pass
+_log = open(_log_path, "a", encoding="utf-8", buffering=1)
 if sys.stdout is None or not sys.stdout.isatty():
     sys.stdout = _log
     sys.stderr = _log

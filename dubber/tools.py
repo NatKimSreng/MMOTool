@@ -16,6 +16,7 @@ from .core import (
     UPLOAD_FOLDER,
     _REJECT_EXT,
     _safe_upload_name,
+    _strip_foreign_script,
     app,
     format_timestamp,
     load_config,
@@ -25,6 +26,7 @@ from .tasks import (
     _start_task,
     _task_state,
     register_task_runner,
+    task_warn,
 )
 from .media import (
     _burn_subtitles,
@@ -33,6 +35,7 @@ from .media import (
     _mux_video_with_audio,
     _normalize_segment_timings,
     _write_bilingual_srt,
+    _write_srt,
     parse_srt_blocks,
 )
 from .asr import (
@@ -99,7 +102,7 @@ def srt_generation_task(file_path, custom_output_dir, model_choice="auto"):
                     "khmer-large",
                 )
             except Exception as e:
-                print(f"[khmer-large failed]: {e}")
+                task_warn(f"Khmer large model failed: {e}")
         elif model_choice == "khmer-tiny":
             try:
                 segments, used_engine = _transcribe_faster_whisper(
@@ -109,7 +112,7 @@ def srt_generation_task(file_path, custom_output_dir, model_choice="auto"):
                     "khmer-tiny",
                 )
             except Exception as e:
-                print(f"[khmer-tiny failed]: {e}")
+                task_warn(f"Khmer tiny model failed: {e}")
         elif model_choice in ("khmer-ft", "auto"):
             try:
                 segments, used_engine = _transcribe_faster_whisper(
@@ -119,7 +122,7 @@ def srt_generation_task(file_path, custom_output_dir, model_choice="auto"):
                     "khmer-ft",
                 )
             except Exception as e:
-                print(f"[khmer-ft failed]: {e}")
+                task_warn(f"Khmer model failed: {e} — trying the next engine")
         elif model_choice == "groq":
             segments, used_engine = _transcribe_groq(audio_path, progress_state)
         elif model_choice == "medium":
@@ -135,22 +138,22 @@ def srt_generation_task(file_path, custom_output_dir, model_choice="auto"):
                     "khmer-ft-fallback",
                 )
             except Exception as e:
-                print(f"[khmer-ft fallback failed]: {e}")
+                task_warn(f"Khmer model failed: {e}")
         if not segments and model_choice != "kiri" and (cfg.get("KIRI_API_KEY") or "").strip():
             try:
                 segments, used_engine = _transcribe_kiri(audio_path, progress_state)
             except Exception as e:
-                print(f"[kiri fallback failed]: {e}")
+                task_warn(f"Kiri failed: {e}")
         if not segments and model_choice != "groq" and (cfg.get("GROQ_API_KEY") or "").strip():
             try:
                 segments, used_engine = _transcribe_groq(audio_path, progress_state)
             except Exception as e:
-                print(f"[groq fallback failed]: {e}")
+                task_warn(f"Groq failed: {e}")
         if not segments and model_choice != "medium":
             try:
                 segments, used_engine = _transcribe_openai_whisper(audio_path, progress_state)
             except Exception as e:
-                print(f"[medium fallback failed]: {e}")
+                task_warn(f"Whisper medium failed: {e}")
 
         if not segments:
             raise ValueError(
@@ -167,12 +170,7 @@ def srt_generation_task(file_path, custom_output_dir, model_choice="auto"):
         os.makedirs(root_output, exist_ok=True)
         output_path = os.path.join(root_output, f"{base_name}.srt")
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            for i, seg in enumerate(segments, start=1):
-                start = format_timestamp(seg["start"])
-                end = format_timestamp(seg["end"])
-                text = seg["text"].strip()
-                f.write(f"{i}\n{start} --> {end}\n{text}\n\n")
+        _write_srt(output_path, segments)
 
         progress_state["percent"] = 100
         progress_state["status"] = f"Success! ({used_engine})"
@@ -349,35 +347,260 @@ def srt_to_speech_task(srt_path, custom_output_dir, voice_key="narrator_female",
     finally:
         progress_state["is_processing"] = False
 
-def download_yt_task(url, custom_output_dir):
+def _is_bilibili_url(url):
+    u = (url or "").lower()
+    return "bilibili.com" in u or "b23.tv" in u or "bilibili.tv" in u
+
+
+def _ydl_opts(url, quality="best"):
+    """yt-dlp options shared by the episode list and the download."""
+    is_bili = _is_bilibili_url(url)
+    cap = f"[height<={int(quality)}]" if str(quality).isdigit() else ""
+    opts = {
+        # Bilibili serves separate video/audio streams; take the best of each and merge
+        'format': (f'bestvideo*{cap}+bestaudio/best{cap}/best' if is_bili
+                   else f'bestvideo{cap}[ext=mp4]+bestaudio[ext=m4a]/best{cap}[ext=mp4]/best{cap}/best'),
+        'quiet': True,
+        'no_warnings': True,
+        'nocheckcertificate': True,
+        'merge_output_format': 'mp4',
+        'retries': 10,
+        'fragment_retries': 10,
+        'concurrent_fragment_downloads': 4,
+        'windowsfilenames': True,
+    }
+    if is_bili:
+        # without a browser User-Agent + Referer Bilibili answers HTTP 412
+        opts['http_headers'] = {
+            'User-Agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                           '(KHTML, like Gecko) Chrome/130.0 Safari/537.36'),
+            'Referer': 'https://www.bilibili.com/',
+            'Origin': 'https://www.bilibili.com',
+        }
+    # cookies.txt from your own logged-in account unlocks 1080p and what your account may watch
+    cookies = (load_config().get("download_cookies_file") or "").strip().strip('"')
+    if cookies and os.path.isfile(cookies):
+        opts['cookiefile'] = cookies
+    return opts
+
+
+def _explain_download_error(url, e):
+    msg = str(e)
+    if _is_bilibili_url(url):
+        low = msg.lower()
+        if "412" in msg:
+            msg += " — Bilibili blocked the request. Wait a few minutes, or add a cookies.txt in Settings."
+        elif "geo" in low or "region" in low or "area" in low:
+            msg += " — this video is region-locked on Bilibili."
+        elif "premium" in low or "vip" in low or "大会员" in msg or "login" in low:
+            msg += " — this video needs a Bilibili login/VIP. Add a cookies.txt from your account in Settings."
+    return msg
+
+
+def _bili_season_items(url):
+    """Bilibili movie / series pages: the real episode names (yt-dlp's list only says 'Part N')."""
+    import re
+    import requests
+    m = re.search(r"/bangumi/play/(ss|ep)(\d+)", url or "")
+    if not m:
+        return None
+    q = ("season_id=" if m.group(1) == "ss" else "ep_id=") + m.group(2)
+    opts = _ydl_opts(url)
+    headers = opts.get('http_headers', {})
+    cookies = None
+    if opts.get('cookiefile'):
+        import http.cookiejar
+        cookies = http.cookiejar.MozillaCookieJar(opts['cookiefile'])
+        cookies.load(ignore_discard=True, ignore_expires=True)
+    data = requests.get(f"https://api.bilibili.com/pgc/view/web/season?{q}",
+                        headers=headers, cookies=cookies, timeout=20).json()
+    res = data.get("result") or {}
+    eps = res.get("episodes") or []
+    if data.get("code") != 0 or not eps:
+        return None
+    items = []
+    for i, e in enumerate(eps, start=1):
+        title = e.get("show_title") or " ".join(x for x in (e.get("title"), e.get("long_title")) if x)
+        items.append({
+            "index": i,
+            "title": title or f"Episode {i}",
+            "url": e.get("link") or f"https://www.bilibili.com/bangumi/play/ep{e.get('id')}",
+            "duration": (e.get("duration") or 0) / 1000 or None,
+            "thumbnail": e.get("cover"),
+            "badge": e.get("badge") or "",   # e.g. 会员 = needs VIP on your account
+        })
+    return {"title": res.get("title") or "Series", "items": items, "heights": []}
+
+
+def _list_video_items(url):
+    """Every episode / part behind a link (a movie, a series, a multi-part video, a playlist)."""
+    try:
+        found = _bili_season_items(url)
+        if found:
+            return found
+    except Exception as e:
+        print(f"[bilibili season list]: {e}")
+    opts = _ydl_opts(url)
+    opts['extract_flat'] = 'in_playlist'
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+    entries = [e for e in (info.get('entries') or []) if e] if info.get('_type') == 'playlist' else []
+    if not entries:
+        heights = sorted({f.get('height') for f in info.get('formats') or [] if f.get('height')}, reverse=True)
+        return {"title": info.get('title') or 'Video', "items": [{
+            "index": 1, "title": info.get('title') or 'Video', "url": info.get('webpage_url') or url,
+            "duration": info.get('duration'), "thumbnail": info.get('thumbnail'),
+        }], "heights": heights}
+    items = []
+    for i, e in enumerate(entries, start=1):
+        items.append({
+            "index": i,
+            "title": e.get('title') or f"Part {i}",
+            "url": e.get('url') or e.get('webpage_url') or url,
+            "duration": e.get('duration'),
+            "thumbnail": (e.get('thumbnails') or [{}])[-1].get('url') or e.get('thumbnail'),
+        })
+    return {"title": info.get('title') or 'Playlist', "items": items, "heights": []}
+
+
+_PREVIEW_STREAMS = {}   # token -> (stream url, request headers), for the on-page player
+
+
+def _pick_preview_formats(formats):
+    """A small browser-playable stream: one file with sound if the site has it,
+    else H.264 video ≤480p plus a separate audio track (Bilibili)."""
+    def h(f):
+        return f.get('height') or 0
+    playable = [f for f in formats if f.get('url') and (f.get('protocol') or 'https').startswith('http')]
+    both = [f for f in playable if f.get('vcodec') not in (None, 'none') and f.get('acodec') not in (None, 'none')
+            and f.get('ext') in ('mp4', 'webm')]
+    if both:
+        small = [f for f in both if h(f) <= 480]
+        return (max(small, key=h) if small else min(both, key=h)), None
+    video = [f for f in playable if f.get('vcodec', 'none') != 'none' and f.get('acodec') in (None, 'none')]
+    audio = [f for f in playable if f.get('acodec', 'none') != 'none' and f.get('vcodec') in (None, 'none')]
+    avc = [f for f in video if str(f.get('vcodec', '')).startswith('avc')] or video
+    if not avc:
+        raise ValueError("No playable preview stream for this video")
+    small = [f for f in avc if h(f) <= 480]
+    v = max(small, key=h) if small else min(avc, key=h)
+    a = min(audio, key=lambda f: f.get('abr') or f.get('tbr') or 0) if audio else None
+    return v, a
+
+
+def _preview_token(fmt):
+    import secrets
+    tok = secrets.token_urlsafe(12)
+    if len(_PREVIEW_STREAMS) > 200:
+        _PREVIEW_STREAMS.clear()
+    _PREVIEW_STREAMS[tok] = (fmt['url'], dict(fmt.get('http_headers') or {}))
+    return f"/download-preview/stream/{tok}"
+
+
+@app.route('/download-preview', methods=['POST'])
+def download_preview():
+    """Watch an episode on the page before downloading it."""
+    url = ((request.json or {}).get('url') or '').strip()
+    if not url:
+        return jsonify({"success": False, "error": "URL is required"}), 400
+    try:
+        opts = _ydl_opts(url)
+        opts['noplaylist'] = True
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+        if info.get('_type') == 'playlist' and info.get('entries'):
+            info = next(e for e in info['entries'] if e)
+        v, a = _pick_preview_formats(info.get('formats') or [info])
+        return jsonify({
+            "success": True,
+            "title": info.get('title') or 'Video',
+            "duration": info.get('duration'),
+            "video": _preview_token(v),
+            "audio": _preview_token(a) if a else None,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": _explain_download_error(url, e)}), 500
+
+
+@app.route('/download-preview/stream/<tok>')
+def download_preview_stream(tok):
+    """Relay the stream with the site's Referer/User-Agent (the browser can't send those itself)."""
+    from flask import Response, stream_with_context
+    import requests
+    found = _PREVIEW_STREAMS.get(tok)
+    if not found:
+        return jsonify({"success": False, "error": "Preview expired — press ▶ again"}), 404
+    src, headers = found
+    if request.headers.get('Range'):
+        headers = {**headers, 'Range': request.headers['Range']}
+    up = requests.get(src, headers=headers, stream=True, timeout=30)
+    out = {k: up.headers[k] for k in ('Content-Type', 'Content-Length', 'Content-Range') if k in up.headers}
+    out['Accept-Ranges'] = 'bytes'
+    if out.get('Content-Type', '').startswith(('application/octet-stream', 'video/x-m4s')):
+        out['Content-Type'] = 'video/mp4'
+
+    def _body():
+        try:
+            for chunk in up.iter_content(256 * 1024):
+                yield chunk
+        finally:
+            up.close()
+    return Response(stream_with_context(_body()), status=up.status_code, headers=out)
+
+
+def download_yt_task(url, custom_output_dir, items=None, quality="best"):
+    """Download one link, or only the chosen episodes/parts (items = their URLs)."""
     progress_state = _task_state()
+    targets = [u for u in (items or []) if u] or [url]
+    saved, failed = [], []
     try:
         progress_state["is_processing"] = True
         progress_state["status"] = "Fetching video info..."
-        progress_state["percent"] = 10
+        progress_state["percent"] = 5
 
         root_output = custom_output_dir if custom_output_dir else DOWNLOAD_FOLDER
         os.makedirs(root_output, exist_ok=True)
+        n = len(targets)
 
-        ydl_opts = {
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            'outtmpl': os.path.join(root_output, '%(title)s.%(ext)s'),
-            'quiet': True,
-            'no_warnings': True,
-            'nocheckcertificate': True,
-            'merge_output_format': 'mp4',
-        }
+        for k, target in enumerate(targets):
+            label = f"[{k + 1}/{n}] " if n > 1 else ""
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
+            def _hook(d, k=k, label=label):
+                if d.get("status") == "downloading":
+                    total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+                    part = d.get("downloaded_bytes", 0) / total if total else 0
+                    progress_state["percent"] = 5 + int(90 * (k + part) / n)
+                    progress_state["status"] = f"{label}Downloading… {d.get('_percent_str', '').strip()}"
 
-            progress_state["status"] = f"Downloaded: {info.get('title', 'Video')}..."
-            progress_state["percent"] = 100
-            progress_state["result_path"] = os.path.abspath(filename)
+            opts = _ydl_opts(target, quality)
+            opts['outtmpl'] = os.path.join(root_output, '%(title).150B [%(id)s].%(ext)s')
+            opts['noplaylist'] = True    # a ?p=3 link downloads part 3 only, not the whole series
+            opts['progress_hooks'] = [_hook]
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(target, download=True)
+                    if info.get('_type') == 'playlist' and info.get('entries'):
+                        info = next(e for e in info['entries'] if e)
+                    done = info.get('requested_downloads') or []
+                    filename = (done[0].get('filepath') if done else None) or ydl.prepare_filename(info)
+                saved.append(os.path.abspath(filename))
+                progress_state["status"] = f"{label}Downloaded: {info.get('title', 'Video')} ({info.get('height') or '?'}p)"
+            except Exception as e:
+                if n == 1:
+                    raise
+                print(f"[download {target}]: {e}")
+                failed.append(_explain_download_error(target, e))
+
+        if not saved:
+            raise ValueError(failed[0] if failed else "Nothing was downloaded")
+        progress_state["percent"] = 100
+        progress_state["result_path"] = saved[0] if len(saved) == 1 else os.path.abspath(root_output)
+        if n > 1:
+            progress_state["status"] = f"Downloaded {len(saved)}/{n} videos" + (
+                f" — {len(failed)} failed: {failed[0]}" if failed else "")
 
     except Exception as e:
-        progress_state["status"] = f"Error: {str(e)}"
+        progress_state["status"] = f"Error: {_explain_download_error(url, e)}"
         progress_state["percent"] = 0
     finally:
         progress_state["is_processing"] = False
@@ -626,9 +849,7 @@ def studio_export_task(file_path, clips_data, custom_output_dir, dub_options=Non
                 if is_bilingual:
                     _write_bilingual_srt(srt_path, subtitles, subtitles)
                 else:
-                    with open(srt_path, "w", encoding="utf-8") as sf:
-                        for i, s in enumerate(subtitles, 1):
-                            sf.write(f"{i}\n{format_timestamp(s['start'])} --> {format_timestamp(s['end'])}\n{s.get('text', '').strip()}\n\n")
+                    _write_srt(srt_path, [{**s, "text": s.get("text", "")} for s in subtitles])
 
                 sub_col = dub_opt.get("sub_color", "yellow")
                 sub_sz = int(dub_opt.get("sub_size", 22))
@@ -778,7 +999,7 @@ def save_srt():
         return jsonify({"success": False, "error": "Missing data"}), 400
     try:
         with open(path, 'w', encoding='utf-8') as f:
-            f.write(content)
+            f.write("\n".join(_strip_foreign_script(ln) for ln in content.split("\n")))
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -790,11 +1011,30 @@ def download():
 
     if not url:
         return jsonify({"success": False, "error": "URL is required"}), 400
+    try:
+        items = json.loads(request.form.get('items') or '[]')
+    except ValueError:
+        items = []
+    quality = request.form.get('quality', 'best')
+    name = f"Download {len(items)} videos: {url[:50]}" if len(items) > 1 else f"Download: {url[:60]}"
 
-    st = _start_task("download_yt_task", dict(url=url, custom_output_dir=custom_output_dir),
-                     name=f"Download: {url[:60]}", kind="download")
+    st = _start_task("download_yt_task", dict(url=url, custom_output_dir=custom_output_dir,
+                                              items=items, quality=quality),
+                     name=name, kind="download")
 
     return jsonify({"success": True, "message": "Download started", "task_id": st["id"]})
+
+
+@app.route('/download-info', methods=['POST'])
+def download_info():
+    """List the episodes / parts behind a link so the user can pick which to download."""
+    url = ((request.json or {}).get('url') or '').strip()
+    if not url:
+        return jsonify({"success": False, "error": "URL is required"}), 400
+    try:
+        return jsonify({"success": True, **_list_video_items(url)})
+    except Exception as e:
+        return jsonify({"success": False, "error": _explain_download_error(url, e)}), 500
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():

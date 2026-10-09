@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 import yt_dlp
 from .core import (
+    _strip_foreign_script,
     CLONED_SAMPLES_DIR,
     CLONED_VOICES_FILE,
     DEFAULT_OUTPUT_FOLDER,
@@ -27,6 +28,7 @@ from .core import (
 )
 from .tasks import (
     _uses_gpu,
+    task_warn,
 )
 from .media import (
     _get_media_duration,
@@ -451,6 +453,7 @@ def _elevenlabs_clone_voice(name, audio_path, api_key, description="Cloned via D
 
 def _elevenlabs_tts(text, voice_id, api_key, out_path):
     """Generate high-fidelity human speech via ElevenLabs Multilingual V2."""
+    text = _strip_foreign_script(text)
     import requests
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
@@ -616,6 +619,7 @@ async def _synthesize_text_to_file(text, voice_key, out_mp3_path, custom_rate=No
     2. Resolves character role mappings from role_voice_map.
     3. Falls back smoothly to Edge-TTS neural character profiles.
     """
+    text = _strip_foreign_script(text)
     cfg = load_config()
     role_map = cfg.get("role_voice_map", {})
 
@@ -635,7 +639,7 @@ async def _synthesize_text_to_file(text, voice_key, out_mp3_path, custom_rate=No
         ok, err = _elevenlabs_tts(text, cloned_voice["elevenlabs_id"], el_key, out_mp3_path)
         if ok and os.path.exists(out_mp3_path) and os.path.getsize(out_mp3_path) > 100:
             return True
-        print(f"[ElevenLabs TTS failed: {err} - falling back to neural voice]")
+        task_warn(f"ElevenLabs voice failed: {err} — used the free neural voice")
 
     # If cloned voice had no ElevenLabs key, resolve to its assigned character role
     if cloned_voice:
@@ -680,7 +684,7 @@ async def _synthesize_text_to_file(text, voice_key, out_mp3_path, custom_rate=No
             await edge_tts.Communicate(text, "km-KH-SreymomNeural", rate=seg_rate, pitch="+0Hz").save(out_mp3_path)
             return True
         except Exception as e2:
-            print(f"[edge_tts fallback failed]: {e2}")
+            task_warn(f"Voice generation failed: {e2}")
             return False
 
 @app.route('/generate-segment-voice', methods=['POST'])
@@ -906,7 +910,10 @@ def _build_timed_speech_track(segments, segment_files, video_duration_s, out_mp3
             a = AudioSegment.from_file(path).set_channels(1).set_frame_rate(SR).set_sample_width(2)
             x = np.frombuffer(a.raw_data, dtype=np.int16).astype(np.float32) / 32768.0
         except Exception as e:
-            print(f"[speech load {path}]: {e}")
+            # pydub's error carries ffmpeg's whole banner — keep the log to one line
+            print(f"[speech load {os.path.basename(path)}]: {str(e).splitlines()[0] if str(e) else e}")
+            task_warn("Some voice lines came out as empty audio files — those lines are silent in the dub. "
+                      "Try another voice, or Resume to make them again.")
             return None
         # trim TTS lead-in / tail silence (keeps lines from wasting their slot)
         idx = np.where(np.abs(x) > 0.004)[0]

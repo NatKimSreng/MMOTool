@@ -6,16 +6,49 @@ import subprocess
 from moviepy import VideoFileClip
 import time
 from .core import (
+    _has_foreign_script,
+    _strip_foreign_script,
     _REJECT_EXT,
     _assert_media_file,
     load_config,
 )
 from .tasks import (
     _uses_gpu,
+    task_warn,
 )
 from .media import (
     _get_media_duration,
 )
+
+
+def _add_nvidia_dll_dirs():
+    """pip's nvidia-cublas-cu12 / nvidia-cudnn-cu12 put their DLLs in site-packages\\nvidia\\*\\bin,
+    which Windows does not search — without this faster-whisper can't use the GPU."""
+    import site
+    roots = list(site.getsitepackages()) + [site.getusersitepackages()]
+    for root in roots:
+        nv = os.path.join(root, "nvidia")
+        if not os.path.isdir(nv):
+            continue
+        for sub in os.listdir(nv):
+            bin_dir = os.path.join(nv, sub, "bin")
+            if os.path.isdir(bin_dir) and bin_dir not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
+                try:
+                    os.add_dll_directory(bin_dir)
+                except (AttributeError, OSError):
+                    pass
+
+
+_add_nvidia_dll_dirs()
+
+
+def _cuda_available():
+    try:
+        import ctranslate2
+        return ctranslate2.get_cuda_device_count() > 0
+    except Exception:
+        return False
 
 
 # whisper is optional (slow on CPU) — imported only when needed
@@ -367,7 +400,7 @@ def _has_khmer(text: str) -> bool:
 
 def _clean_segment_text(text: str) -> str:
     """Strip noise / repeated punctuation; keep Khmer + basic punctuation."""
-    text = (text or "").strip()
+    text = _strip_foreign_script(text or "").strip()
     if not text:
         return ""
     # Collapse whitespace
@@ -601,8 +634,9 @@ def _enhance_audio_for_asr(audio_path, progress_state=None):
     return audio_path
 
 
+@_uses_gpu("Transcribing Khmer on this computer")
 def _transcribe_faster_whisper(audio_path, model_id, progress_state, label):
-    """Local Khmer fine-tuned faster-whisper — BEST free quality for Khmer on CPU."""
+    """Local Khmer fine-tuned faster-whisper — BEST free quality for Khmer. GPU when available, else CPU."""
     progress_state["status"] = f"កំពុងផ្ទុកម៉ូដែលខ្មែរ ({label})..."
     progress_state["percent"] = 28
     from faster_whisper import WhisperModel
@@ -611,41 +645,54 @@ def _transcribe_faster_whisper(audio_path, model_id, progress_state, label):
     clean_path = _enhance_audio_for_asr(audio_path, progress_state)
     progress_state["percent"] = 35
 
-    model = WhisperModel(model_id, device="cpu", compute_type="int8")
-    progress_state["status"] = "កំពុងបកប្រែជាអក្សរខ្មែរ (local fine-tuned)..."
-    progress_state["percent"] = 45
+    # int8_float16 fits the small model in 4 GB VRAM; the whole decode is retried on CPU if CUDA
+    # fails part-way (missing DLL, out of memory).
+    devices = ([("cuda", "int8_float16")] if _cuda_available() else []) + [("cpu", "int8")]
+    segments, last_err = None, None
+    for device, compute in devices:
+        try:
+            model = WhisperModel(model_id, device=device, compute_type=compute)
+            progress_state["status"] = (f"កំពុងបកប្រែជាអក្សរខ្មែរ (local fine-tuned, "
+                                        f"{'GPU' if device == 'cuda' else 'CPU'})...")
+            progress_state["percent"] = 45
 
-    # Stronger search + Khmer-only prompt = fewer wrong words / Latin junk
-    segs, info = model.transcribe(
-        clean_path,
-        language="km",
-        task="transcribe",
-        beam_size=10,
-        best_of=5,
-        patience=1.2,
-        temperature=[0.0, 0.2, 0.4],
-        vad_filter=True,
-        vad_parameters=dict(
-            min_silence_duration_ms=280,
-            speech_pad_ms=250,
-            threshold=0.45,
-        ),
-        condition_on_previous_text=True,
-        initial_prompt=(
-            "នេះជាការនិយាយជាភាសាខ្មែរ។ "
-            "សូមសរសេរតែជាអក្សរខ្មែរ កុំប្រើអក្សរឡាតាំង។ "
-            "សរសេរឱ្យត្រឹមត្រូវ និងច្បាស់។ "
-        ),
-        word_timestamps=False,
-        compression_ratio_threshold=2.4,
-        log_prob_threshold=-1.0,
-        no_speech_threshold=0.6,
-    )
-    segments = []
-    for s in segs:
-        text = (s.text or "").strip()
-        if text:
-            segments.append({"start": s.start, "end": s.end, "text": text})
+            # Stronger search + Khmer-only prompt = fewer wrong words / Latin junk
+            segs, info = model.transcribe(
+                clean_path,
+                language="km",
+                task="transcribe",
+                beam_size=10,
+                best_of=5,
+                patience=1.2,
+                temperature=[0.0, 0.2, 0.4],
+                vad_filter=True,
+                vad_parameters=dict(
+                    min_silence_duration_ms=280,
+                    speech_pad_ms=250,
+                    threshold=0.45,
+                ),
+                condition_on_previous_text=True,
+                initial_prompt=(
+                    "នេះជាការនិយាយជាភាសាខ្មែរ។ "
+                    "សូមសរសេរតែជាអក្សរខ្មែរ កុំប្រើអក្សរឡាតាំង។ "
+                    "សរសេរឱ្យត្រឹមត្រូវ និងច្បាស់។ "
+                ),
+                word_timestamps=False,
+                compression_ratio_threshold=2.4,
+                log_prob_threshold=-1.0,
+                no_speech_threshold=0.6,
+            )
+            segments = []
+            for s in segs:
+                text = (s.text or "").strip()
+                if text:
+                    segments.append({"start": s.start, "end": s.end, "text": text})
+            break
+        except Exception as e:
+            last_err = e
+            task_warn(f"Khmer model on {'GPU' if device == 'cuda' else 'CPU'} failed: {e}")
+    if segments is None:
+        raise RuntimeError(f"Khmer model could not run: {last_err}")
 
     if clean_path != audio_path:
         try:
@@ -686,21 +733,23 @@ def _transcribe_openai_whisper(audio_path, progress_state):
 def _local_whisper_segments(audio_path, lang=None, model_size="small"):
     """faster-whisper on the NVIDIA GPU when its CUDA libraries load, else CPU."""
     from faster_whisper import WhisperModel
-    model = None
-    for device, compute in (("cuda", "float16"), ("cpu", "int8")):
-        try:
-            model = WhisperModel(model_size, device=device, compute_type=compute)
-            break
-        except Exception as e:
-            print(f"[local whisper {device}]: {e}")
-    if model is None:
-        raise RuntimeError("faster-whisper could not load")
     kw = dict(beam_size=5, vad_filter=True, temperature=0.0)
     if lang and lang != "auto":
         kw["language"] = lang
-    segs, info = model.transcribe(audio_path, **kw)
-    out = [{"start": x.start, "end": x.end, "text": (x.text or "").strip()} for x in segs if (x.text or "").strip()]
-    return out, getattr(info, "language", lang)
+    last_err = None
+    # The model can load on CUDA and only fail on the first decode (e.g. cublas64_12.dll
+    # missing on PCs without the NVIDIA libraries), so the whole transcribe is retried on CPU.
+    for device, compute in (("cuda", "float16"), ("cpu", "int8")):
+        try:
+            model = WhisperModel(model_size, device=device, compute_type=compute)
+            segs, info = model.transcribe(audio_path, **kw)
+            out = [{"start": x.start, "end": x.end, "text": (x.text or "").strip()}
+                   for x in segs if (x.text or "").strip()]
+            return out, getattr(info, "language", lang)
+        except Exception as e:
+            last_err = e
+            task_warn(f"Local Whisper on {'GPU' if device == 'cuda' else 'CPU'} failed: {e}")
+    raise RuntimeError(f"faster-whisper could not run: {last_err}")
 
 
 def _groq_transcribe_chunked(client, audio_path, language=None, progress_state=None, chunk_sec=600):
@@ -759,7 +808,7 @@ def _groq_transcribe_chunked(client, audio_path, language=None, progress_state=N
             else:
                 segs = None
             if segs is None:
-                print(f"[groq chunk {i}] failed ({last}) — local whisper for this piece")
+                task_warn(f"Groq failed on part {i + 1} ({last}) — transcribing that part locally")
                 segs, _ = _local_whisper_segments(chunks[i], language)
                 used.add("local")
             done[0] += 1
@@ -784,6 +833,31 @@ def _groq_transcribe_chunked(client, audio_path, language=None, progress_state=N
 
 def _transcribe_source_lang(audio_path, progress_state, lang="auto"):
     """
+    Thai is never used. Whisper's auto-detect often mistakes Khmer speech for Thai (or Lao),
+    so if any line comes back in Thai-looking script, transcribe again forced to Khmer and
+    strip whatever of those characters are still left.
+    """
+    if lang == "th":
+        lang = "auto"
+    segments, engine = _transcribe_source_lang_once(audio_path, progress_state, lang)
+    if lang == "km" or not any(_has_foreign_script(s["text"]) for s in segments):
+        return segments, engine
+    print("[source ASR] Thai detected — re-transcribing as Khmer")
+    progress_state["status"] = "Thai detected — re-transcribing as Khmer..."
+    try:
+        segments, engine = _transcribe_source_lang_once(audio_path, progress_state, "km")
+    except Exception as e:
+        task_warn(f"Khmer retry failed: {e}")
+    cleaned = []
+    for s in segments:
+        text = _strip_foreign_script(s["text"])
+        if text:
+            cleaned.append({**s, "text": text})
+    return cleaned, engine
+
+
+def _transcribe_source_lang_once(audio_path, progress_state, lang="auto"):
+    """
     ASR for Chinese / English / auto — Groq Whisper is FAST here.
     Falls back to OpenAI Whisper API, then local faster-whisper.
     """
@@ -806,22 +880,43 @@ def _transcribe_source_lang(audio_path, progress_state, lang="auto"):
             if segments:
                 return segments, f"{how}-whisper-large-v3-" + (lang or "auto")
         except Exception as e:
-            print(f"[source ASR groq failed]: {e}")
+            task_warn(f"Groq transcription failed: {e} — trying the next engine")
 
     # 2) Cloud OpenAI Whisper API fallback
     if openai_key:
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=openai_key)
             progress_state["status"] = "OpenAI Whisper Cloud ASR..."
-            with open(audio_path, "rb") as f:
-                tr = client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=f,
-                    response_format="verbose_json",
-                    language=lang if lang != "auto" else None
-                )
-            raw_segs = getattr(tr, 'segments', []) or []
+            try:
+                from openai import OpenAI
+            except ImportError:
+                OpenAI = None
+            if OpenAI is not None:
+                client = OpenAI(api_key=openai_key)
+                with open(audio_path, "rb") as f:
+                    tr = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=f,
+                        response_format="verbose_json",
+                        language=lang if lang != "auto" else None
+                    )
+                raw_segs = getattr(tr, 'segments', []) or []
+            else:
+                # openai package not installed (e.g. portable build) — same API over plain HTTP
+                import requests
+                data = {"model": "whisper-1", "response_format": "verbose_json"}
+                if lang and lang != "auto":
+                    data["language"] = lang
+                with open(audio_path, "rb") as f:
+                    r = requests.post(
+                        "https://api.openai.com/v1/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {openai_key}"},
+                        data=data,
+                        files={"file": (os.path.basename(audio_path), f)},
+                        timeout=600,
+                    )
+                if r.status_code != 200:
+                    raise ValueError(f"OpenAI error {r.status_code}: {r.text[:120]}")
+                raw_segs = r.json().get("segments") or []
             segments = []
             for s in raw_segs:
                 txt = s.get('text', '') if isinstance(s, dict) else getattr(s, 'text', '')
@@ -832,7 +927,7 @@ def _transcribe_source_lang(audio_path, progress_state, lang="auto"):
             if segments:
                 return segments, "openai-whisper-1"
         except Exception as e:
-            print(f"[source ASR openai failed]: {e}")
+            task_warn(f"OpenAI transcription failed: {e} — trying local Whisper")
 
     # 3) Local faster-whisper fallback
     try:
@@ -841,7 +936,7 @@ def _transcribe_source_lang(audio_path, progress_state, lang="auto"):
         if segments:
             return segments, f"faster-whisper-small-{det_lang}"
     except Exception as e:
-        print(f"[source ASR local failed]: {e}")
+        task_warn(f"Local Whisper failed: {e}")
 
     raise ValueError(
         "Could not transcribe. Set GROQ_API_KEY or OPENAI_API_KEY in Settings "

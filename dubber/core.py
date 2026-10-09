@@ -2,7 +2,9 @@
 Paths, the Flask app, settings (config.json) and API keys (kept in the user profile), history.
 """
 import os
+import re
 import json
+import logging
 from flask import Flask
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -13,6 +15,19 @@ from datetime import datetime
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__, root_path=_BASE_DIR)   # templates/ and static/ are in the app folder
+
+
+class _QuietPolling(logging.Filter):
+    """The pages poll these every second — successful polls made up ~80% of dubber.log."""
+    _PATHS = ('"GET /progress', '"GET /api/tasks', '"GET /api/batch-queue', '"GET /static/')
+
+    def filter(self, record):
+        msg = record.getMessage()
+        ok = '" 200 ' in msg or '" 304 ' in msg   # errors on these paths still get logged
+        return not (ok and any(p in msg for p in self._PATHS))
+
+
+logging.getLogger("werkzeug").addFilter(_QuietPolling())
 # Local desktop app: allow multi-GB (1–2h) video uploads without Flask rejecting them.
 app.config["MAX_CONTENT_LENGTH"] = None
 
@@ -181,6 +196,36 @@ def save_to_history(filename, output_path, segments):
     history.append(entry)
     with open(HISTORY_FILE, 'w') as f:
         json.dump(history, f, indent=4)
+
+# Scripts the AI sometimes slips into Khmer lines. Lao and Myanmar look almost like Thai,
+# so they are all removed together: Hebrew, Arabic, Devanagari, Thai, Lao, Myanmar,
+# Tai Tham, Myanmar Extended-B/A and Tai Viet. Khmer (U+1780–U+17FF) is never touched.
+_FOREIGN_SCRIPT_RE = re.compile(
+    "[֐-ۿऀ-ॿ฀-໿က-႟"
+    "ᨠ-᪯ꧠ-꧿ꩠ-꫟]+"
+)
+_CJK_RE = re.compile("[㐀-䶿一-鿿豈-﫿]")
+
+
+def _has_foreign_script(text):
+    """True if text contains Thai-looking or other unwanted script (see _FOREIGN_SCRIPT_RE)."""
+    return bool(_FOREIGN_SCRIPT_RE.search(text or ""))
+
+
+def _has_cjk(text):
+    """True if text still contains Chinese characters."""
+    return bool(_CJK_RE.search(text or ""))
+
+
+def _strip_foreign_script(text):
+    """Thai/Lao/Myanmar etc. are never shown — remove them and tidy the spaces left behind."""
+    if not _has_foreign_script(text):
+        return text or ""
+    text = _FOREIGN_SCRIPT_RE.sub("", text)
+    # a Khmer vowel or sign whose letter was removed would show as a dotted circle — drop it
+    text = re.sub("(?:^|(?<=\s))[ា-៓៝]+", "", text)
+    return re.sub(r"[ 	]+", " ", text).strip()
+
 
 def format_timestamp(seconds):
     """Helper to format seconds into SRT timestamp format (00:00:00,000)"""

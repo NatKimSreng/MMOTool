@@ -6,6 +6,7 @@ faster-whisper
 edge-tts
 pydub
 groq
+openai
 pyinstaller
 deep-translator
 requests

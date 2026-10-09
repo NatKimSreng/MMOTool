@@ -85,6 +85,23 @@ def _task_state():
     return st if st is not None else progress_state
 
 
+def task_warn(msg):
+    """A step failed but the job goes on (fallback). Logged, and shown under the task's progress
+    so the user sees why it is slow / which engine was skipped instead of only a stuck bar."""
+    msg = str(msg).strip()
+    print(f"[warn] {msg}")
+    st = _task_state()
+    if len(msg) > 220:
+        msg = msg[:217] + "..."
+    try:
+        warns = list(dict.get(st, "warnings") or [])
+        if msg not in warns:
+            dict.__setitem__(st, "warnings", (warns + [msg])[-8:])
+            _TASKS_DIRTY.set()
+    except Exception:
+        pass
+
+
 def _set_task_param(key, value):
     """Remember something in the running task's saved params (used when it is resumed)."""
     st = getattr(_TASK_LOCAL, "state", None)
@@ -110,6 +127,30 @@ def _task_popen_init(self, *args, **kwargs):
 
 
 subprocess.Popen.__init__ = _task_popen_init
+
+
+# Thread-pool workers run on other threads, so they would not know their task: warnings would land
+# on the global progress and Pause would miss their ffmpeg processes. Hand the submitter's task over.
+import concurrent.futures as _cf
+_orig_pool_submit = _cf.ThreadPoolExecutor.submit
+
+
+def _task_pool_submit(self, fn, /, *args, **kwargs):
+    st = getattr(_TASK_LOCAL, "state", None)
+    if st is None:
+        return _orig_pool_submit(self, fn, *args, **kwargs)
+
+    def _in_task(*a, **kw):
+        prev = getattr(_TASK_LOCAL, "state", None)
+        _TASK_LOCAL.state = st
+        try:
+            return fn(*a, **kw)
+        finally:
+            _TASK_LOCAL.state = prev
+    return _orig_pool_submit(self, _in_task, *args, **kwargs)
+
+
+_cf.ThreadPoolExecutor.submit = _task_pool_submit
 
 
 def _task_public(st):
@@ -217,7 +258,8 @@ def _run_task(st):
             st["state"] = "running"
             st["started_at"] = time.time()
             st["status"] = "Starting..."
-            fn = _TASK_RUNNERS.get(st.get("runner"))
+            st["warnings"] = []
+            fn =_TASK_RUNNERS.get(st.get("runner"))
             if fn is None:
                 raise RuntimeError(f"Unknown task type: {st.get('runner')}")
             fn(**(st.get("params") or {}))

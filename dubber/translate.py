@@ -4,10 +4,16 @@ Translation to spoken Khmer: prompts, Gemini / OpenAI / Groq LLMs and free Googl
 import threading
 import time
 from .core import (
+    _has_cjk,
+    _has_foreign_script,
+    _strip_foreign_script,
     load_config,
 )
 from .asr import (
     _has_khmer,
+)
+from .tasks import (
+    task_warn,
 )
 
 
@@ -142,7 +148,34 @@ PROMPT_STYLES = {
     )
 }
 
+# Added to every style: models often slip into Thai / Lao (they look like Khmer) and
+# translate word-by-word into stiff, bookish Khmer that viewers struggle to follow.
+_KHMER_CLARITY_RULES = (
+    "\n\n"
+    "SCRIPT — MOST IMPORTANT:\n"
+    "- Write every word in KHMER script only (U+1780–U+17FF, e.g. ខ្ញុំ, អ្នក, ទៅ).\n"
+    "- NEVER use Thai letters (e.g. ก ข ค ง จ ไ เ ่ ้ ๆ) or Lao letters (e.g. ກ ຂ ຄ ງ ຈ ໄ ເ ່ ້). "
+    "They look similar but are a different language — viewers cannot read them.\n"
+    "- Do not write Khmer words in Latin letters (no romanization). Foreign names → write them in Khmer letters "
+    "unless the glossary gives a spelling.\n"
+    "\n"
+    "EASY TO UNDERSTAND:\n"
+    "- Translate the MEANING, not word-by-word. Rebuild each sentence the way a Cambodian would say it.\n"
+    "- Use simple everyday words people use at home and in the market. Avoid rare Pali/Sanskrit, "
+    "royal or official/legal vocabulary unless the scene really needs it.\n"
+    "- Idioms, jokes and slang → a natural Khmer equivalent, not a literal copy.\n"
+    "- Short and clear: one idea per line, easy to read on screen and to hear once.\n"
+    "- Keep who-is-who clear: right pronoun for the speaker and listener, same name spellings every time.\n"
+    "- Never leave a line in English or Chinese; never answer with notes or alternatives."
+)
+PROMPT_STYLES = {k: v + _KHMER_CLARITY_RULES for k, v in PROMPT_STYLES.items()}
+
 _KHMER_SUB_SYSTEM = PROMPT_STYLES["recap"]
+
+
+def _khmer_line_is_bad(kh):
+    """Thai / Lao / Chinese inside, or no Khmer at all → the line must be translated again."""
+    return not kh or _has_foreign_script(kh) or _has_cjk(kh) or not _has_khmer(kh)
 
 
 def _apply_glossary_replacement(text: str, glossary: dict = None) -> str:
@@ -220,6 +253,20 @@ GEMINI_MODELS = [
 ]
 _GEMINI_BLOCKED = {}  # model -> unix time when it may be tried again
 _GEMINI_LOCK = threading.Lock()
+
+
+# An OpenAI account with no credit fails every request — skip it for a while instead of
+# spending two calls per batch on it.
+_OPENAI_BLOCKED_UNTIL = [0.0]
+_OPENAI_NO_CREDIT = "OpenAI account has no credits left (add credit at platform.openai.com/settings/organization/billing)"
+
+
+def _openai_out_of_credit(err):
+    if "insufficient_quota" in str(err) or "no credits remaining" in str(err):
+        _OPENAI_BLOCKED_UNTIL[0] = time.time() + 3600
+        task_warn(_OPENAI_NO_CREDIT + " — skipping OpenAI for an hour")
+        return True
+    return False
 
 
 def _gemini_block(model, seconds):
@@ -305,6 +352,10 @@ def _gemini_chat_translate(system_prompt, user_prompt):
         if soonest <= 0 or soonest > 65:
             break
         time.sleep(soonest + 0.5)
+    if last_err is None:   # nothing was even tried — every model is resting on its quota
+        free_at = min((_GEMINI_BLOCKED.get(m, 0) for m in models), default=0)
+        last_err = ("all Gemini models are out of free quota"
+                    + (f" until {time.strftime('%H:%M', time.localtime(free_at))}" if free_at else ""))
     return None, last_err
 
 
@@ -330,10 +381,12 @@ def _llm_chat_translate(messages, system_prompt=None, user_prompt=None, engine_c
         if raw:
             return raw, model
         last_err = model
-        print(f"[Gemini translate fallback]: {last_err}")
+        task_warn(f"Gemini translation failed: {last_err} — trying the next engine")
 
     # --- 2) OpenAI ---
-    if (engine_choice in ("auto", "openai") or (engine_choice == "gemini" and not gemini_key)) and openai_key:
+    if openai_key and _OPENAI_BLOCKED_UNTIL[0] > time.time():
+        last_err = _OPENAI_NO_CREDIT
+    elif (engine_choice in ("auto", "openai") or (engine_choice == "gemini" and not gemini_key)) and openai_key:
         ai_messages = [
             {"role": "system", "content": sys_text},
             {"role": "user", "content": usr_text}
@@ -354,6 +407,9 @@ def _llm_chat_translate(messages, system_prompt=None, user_prompt=None, engine_c
                         return raw, model
                 except Exception as e:
                     last_err = e
+                    if _openai_out_of_credit(e):
+                        last_err = _OPENAI_NO_CREDIT
+                        break
                     continue
         except Exception:
             import requests
@@ -371,6 +427,9 @@ def _llm_chat_translate(messages, system_prompt=None, user_prompt=None, engine_c
                         raw = (res_json.get("choices", [{}])[0].get("message", {}).get("content") or "").strip()
                         if raw:
                             return raw, model
+                    elif _openai_out_of_credit(r.text):
+                        last_err = _OPENAI_NO_CREDIT
+                        break
                     else:
                         last_err = f"OpenAI error {r.status_code}: {r.text[:120]}"
                 except Exception as e:
@@ -383,6 +442,9 @@ def _llm_chat_translate(messages, system_prompt=None, user_prompt=None, engine_c
             {"role": "system", "content": sys_text},
             {"role": "user", "content": usr_text}
         ]
+        # Free Groq counts max_tokens against its tokens-per-minute limit, so a fixed 16000 made
+        # every batch "Request too large". Size it to the text (Khmer needs ~3x the source tokens).
+        groq_max = max(2048, min(16000, len(usr_text) * 3 // 4 + 1000))
         try:
             from groq import Groq
             client = Groq(api_key=groq_key)
@@ -392,7 +454,7 @@ def _llm_chat_translate(messages, system_prompt=None, user_prompt=None, engine_c
                         model=model,
                         messages=ai_messages,
                         temperature=0.25,
-                        max_tokens=16000,
+                        max_tokens=groq_max,
                     )
                     raw = (resp.choices[0].message.content or "").strip()
                     if raw:
@@ -408,7 +470,7 @@ def _llm_chat_translate(messages, system_prompt=None, user_prompt=None, engine_c
                     r = requests.post(
                         "https://api.groq.com/openai/v1/chat/completions",
                         headers=headers,
-                        json={"model": model, "messages": ai_messages, "temperature": 0.25, "max_tokens": 4000},
+                        json={"model": model, "messages": ai_messages, "temperature": 0.25, "max_tokens": groq_max},
                         timeout=45
                     )
                     if r.status_code == 200:
@@ -619,20 +681,55 @@ def _translate_batch_llm(batch, prev_khmer="", engine="auto", style="recap", pre
         return None, model_or_err
 
     mapped = _parse_numbered_translations(raw, len(batch))
+    lines = [_polish_khmer_line((mapped[i] if i < len(mapped) else "") or "") for i in range(len(batch))]
+
+    # Lines with Thai / Lao / Chinese in them (or not Khmer at all): ask the AI again for just
+    # those lines, with a strict reminder — keeps AI quality instead of dropping to Google
+    for _ in range(2):
+        bad = [i for i, kh in enumerate(lines) if batch[i].get("text") and _khmer_line_is_bad(kh)]
+        if not bad:
+            break
+        print(f"[translate] {len(bad)} line(s) had Thai/Lao/foreign text — asking the AI again")
+        fix_raw, _m = _llm_chat_translate(
+            None, system_prompt=sys_prompt,
+            user_prompt=_build_repair_prompt([batch[i] for i in bad], [lines[i] for i in bad]),
+            engine_choice=engine, style=style,
+        )
+        if not fix_raw:
+            break
+        for j, kh in enumerate(_parse_numbered_translations(fix_raw, len(bad))):
+            kh = _polish_khmer_line(kh)
+            if not _khmer_line_is_bad(kh):
+                lines[bad[j]] = kh
+
     result = []
     for i, s in enumerate(batch):
-        kh = (mapped[i] if i < len(mapped) else "") or ""
-        kh = _polish_khmer_line(kh)
-        # If model returned non-Khmer, fix with free backend
-        if kh and not _has_khmer(kh) and s.get("text"):
+        kh = lines[i]
+        if _khmer_line_is_bad(kh) and s.get("text"):
             fixed = _translate_one_google(s["text"])
-            if fixed:
+            if fixed and not _khmer_line_is_bad(fixed):
                 kh = fixed
         if not kh:
             kh = _translate_one_google(s.get("text", "")) or s.get("text", "")
-        kh = _apply_glossary_replacement(kh)
+        kh = _strip_foreign_script(_apply_glossary_replacement(kh))
         result.append(kh)
     return result, model_or_err
+
+
+def _build_repair_prompt(src_lines, bad_lines):
+    """Re-translate only the lines that came back with Thai / Lao / non-Khmer text."""
+    numbered = "\n".join(
+        f"{i+1}. {s.get('text', '')}" + (f"\n   (wrong answer — contained non-Khmer letters: {b})" if b else "")
+        for i, (s, b) in enumerate(zip(src_lines, bad_lines))
+    )
+    return (
+        "Your previous answer for these lines used Thai, Lao, Chinese or English letters. That is wrong.\n"
+        "Translate each line again into simple, natural spoken Khmer, written ONLY in Khmer script "
+        "(ក ខ គ ឃ ង ...). Not one Thai or Lao letter.\n"
+        f"There are exactly {len(src_lines)} numbered lines. Output exactly {len(src_lines)} lines, "
+        "each starting with its number (\"1. ...\"). No notes.\n\n"
+        f"{numbered}"
+    )
 
 
 def _translate_to_khmer(segments, progress_state, engine="auto", style="recap", saved=None, save_partial=None):
@@ -688,8 +785,23 @@ def _translate_to_khmer(segments, progress_state, engine="auto", style="recap", 
                 mapped, model_or_err = _translate_batch_llm(
                     batch, "", engine="auto", style=style, prev_source_lines=ctx
                 )
+            if mapped is None and len(batch) >= 16:
+                # too large for the engine that is left (e.g. Groq's free limits) — try halves
+                half = len(batch) // 2
+                parts = []
+                for pi, part in enumerate((batch[:half], batch[half:])):
+                    pctx = ctx if pi == 0 else [s["text"] for s in batch[half - 3: half]]
+                    m, why = _translate_batch_llm(part, "", engine="auto", style=style, prev_source_lines=pctx)
+                    if m is None:
+                        model_or_err = why
+                        break
+                    parts.append((m, why))
+                else:
+                    mapped = parts[0][0] + parts[1][0]
+                    model_or_err = parts[0][1]
             if mapped is None:
-                print(f"[translate batch {bi}] AI failed ({model_or_err}) — free Google for this batch")
+                task_warn(f"AI translation failed on lines {bi + 1}-{bi + len(batch)} ({model_or_err}) "
+                          "— used free Google Translate for them")
                 mapped = _translate_lines_google_batch([s.get("text", "") for s in batch])
                 model_or_err = "google-free"
             return bi, mapped, model_or_err
@@ -756,7 +868,7 @@ def _translate_to_khmer(segments, progress_state, engine="auto", style="recap", 
         )
         if not kh:
             kh = s["text"]  # last resort — never crash the job
-        kh = _apply_glossary_replacement(kh)
+        kh = _strip_foreign_script(_apply_glossary_replacement(kh))
         out.append({
             "start": s["start"],
             "end": s["end"],
@@ -778,5 +890,5 @@ def _translate_to_khmer(segments, progress_state, engine="auto", style="recap", 
     else:
         print(f"[translate] Free backends OK — {khmer_n}/{len(out)} Khmer lines")
     for item in out:
-        item["text"] = _apply_glossary_replacement(item.get("text", ""))
+        item["text"] = _strip_foreign_script(_apply_glossary_replacement(item.get("text", "")))
     return out

@@ -250,6 +250,22 @@
         <p id="kiriMsg" class="text-xs text-[#888] mt-2 hidden"></p>
     </div>
 
+    <!-- Download cookies (Bilibili HD) -->
+    <div class="card p-5">
+        <div class="section-title">📺 Bilibili / Download Login (optional)</div>
+        <p class="text-xs text-[#888] mb-4 leading-relaxed">
+            Without a login Bilibili only gives 480p. Export <b>cookies.txt</b> from your own logged-in
+            bilibili.com tab (browser extension "Get cookies.txt LOCALLY"), save it, and paste its full path here
+            to download in 1080p. Keep this file private — it is your login.
+        </p>
+        <label class="label">cookies.txt path</label>
+        <input type="text" id="cookiesFile" class="input mb-3" placeholder="C:\Users\you\Downloads\bilibili_cookies.txt" autocomplete="off">
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1 justify-center" onclick="saveCookies()">Save</button>
+            <button class="btn btn-danger" onclick="saveCookies(true)">Clear</button>
+        </div>
+    </div>
+
     <!-- ElevenLabs Voice Cloning API -->
     <div class="card p-5 border-[#333]">
         <div class="flex items-center justify-between mb-2">
@@ -553,6 +569,8 @@ async function load() {
             st.innerHTML = '<span class="status-dot off"></span> Not set';
         }
 
+        document.getElementById('cookiesFile').value = c.download_cookies_file || '';
+
         // Kiri
         const sk = document.getElementById('stKiri');
         if (c.has_kiri_key) {
@@ -755,6 +773,21 @@ async function clearKiri() {
     });
     toast('Kiri Key cleared');
     load();
+}
+
+async function saveCookies(clear) {
+    const el = document.getElementById('cookiesFile');
+    const path = clear ? '' : el.value.trim().replace(/^"|"$/g, '');
+    const r = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ download_cookies_file: path })
+    });
+    const d = await r.json();
+    if (d.success) {
+        el.value = path;
+        toast(clear ? 'Cookies cleared' : 'Cookies path saved ✓');
+    } else alert('Save failed');
 }
 
 async function saveAllDefaults() {
